@@ -196,7 +196,7 @@ export default function App() {
 
   if (screen === 'start') {
     return (
-      <main className="app">
+      <main className="app start">
         {soundToggle}
         <h1>🎵 Note Reading Trainer 🎶</h1>
         <p className="subtitle">
@@ -204,6 +204,8 @@ export default function App() {
           score big!
         </p>
 
+        <div className="start-columns">
+        <div className="setup">
         <div className="level-picker" role="radiogroup" aria-label="Game">
           {GAMES.map((g) => (
             <button
@@ -247,6 +249,7 @@ export default function App() {
             {extended ? 'Up to 3 ledger lines' : '1 ledger line'}
           </span>
         </button>
+        </div>
 
         <div className="mode-buttons">
           {(
@@ -270,6 +273,7 @@ export default function App() {
               </button>
             )
           })}
+        </div>
         </div>
       </main>
     )
@@ -344,7 +348,7 @@ export default function App() {
 
   // playing
   return (
-    <main className="app">
+    <main className="app playing">
       {soundToggle}
       <header className="hud">
         <span>

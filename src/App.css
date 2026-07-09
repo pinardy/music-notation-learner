@@ -23,6 +23,13 @@ h1 {
   font-weight: 500;
 }
 
+/* In portrait these wrappers are invisible to layout; the landscape media
+   query below turns them into real columns */
+.start-columns,
+.setup {
+  display: contents;
+}
+
 .sound-toggle {
   position: fixed;
   top: 0.9rem;
@@ -379,4 +386,83 @@ button.primary {
   border-color: var(--accent);
   color: #fff;
   box-shadow: 0 4px 0 #5a3fd4;
+}
+
+/* --- Landscape tablet layout: staff left, answers right --- */
+
+@media (orientation: landscape) and (min-width: 700px) and (min-height: 420px) {
+  .app.playing {
+    max-width: 940px;
+    min-height: 92vh;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      '. hud'
+      'staff options'
+      'hint feedback';
+    align-items: center;
+    align-content: center;
+    column-gap: 2.5rem;
+    row-gap: 1rem;
+  }
+
+  .app.playing .hud {
+    grid-area: hud;
+    max-width: none;
+  }
+
+  .app.playing .staff-wrap {
+    grid-area: staff;
+    max-width: none;
+  }
+
+  .app.playing .key-hint {
+    grid-area: hint;
+    margin: 0;
+  }
+
+  /* 2x2 answer pad with bigger touch targets */
+  .app.playing .options {
+    grid-area: options;
+    grid-template-columns: repeat(2, 1fr);
+    max-width: none;
+    gap: 1rem;
+  }
+
+  .app.playing .option {
+    padding: 1.4rem 0;
+  }
+
+  .app.playing .options.words .option {
+    padding: 1.7rem 0.1rem;
+    font-size: 1.25rem;
+  }
+
+  .app.playing .feedback {
+    grid-area: feedback;
+  }
+
+  /* Start screen: settings on the left, clef buttons on the right */
+  .app.start {
+    max-width: 940px;
+  }
+
+  .app.start .start-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: start;
+    column-gap: 2.5rem;
+    width: 100%;
+  }
+
+  .app.start .setup {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .app.start .mode-buttons {
+    max-width: none;
+  }
 }
