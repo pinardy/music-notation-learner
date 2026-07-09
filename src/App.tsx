@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Staff } from './Staff'
 import { makeQuestion } from './notes'
 import type { ClefMode, Level, Question } from './notes'
+import { playNote } from './audio'
 import './App.css'
 
 const ROUND_LENGTH = 10
@@ -66,6 +67,13 @@ export default function App() {
   const [answers, setAnswers] = useState<AnswerRecord[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [best, setBest] = useState<BestResult | null>(null)
+  const [soundOn, setSoundOn] = useState(() => {
+    try {
+      return localStorage.getItem('note-game-sound') !== 'off'
+    } catch {
+      return true
+    }
+  })
   const questionStartRef = useRef(0)
   const timeoutRef = useRef<number | undefined>(undefined)
 
@@ -73,6 +81,28 @@ export default function App() {
 
   const score = answers.filter((a) => a.correct).length
   const totalTimeMs = answers.reduce((sum, a) => sum + a.timeMs, 0)
+
+  function toggleSound() {
+    setSoundOn((on) => {
+      try {
+        localStorage.setItem('note-game-sound', on ? 'off' : 'on')
+      } catch {
+        // preference just won't persist
+      }
+      return !on
+    })
+  }
+
+  const soundToggle = (
+    <button
+      className="sound-toggle"
+      onClick={toggleSound}
+      aria-label={soundOn ? 'Turn sound off' : 'Turn sound on'}
+      title={soundOn ? 'Sound on' : 'Sound off'}
+    >
+      {soundOn ? '🔊' : '🔇'}
+    </button>
+  )
 
   function startRound(selectedMode: ClefMode) {
     setMode(selectedMode)
@@ -112,6 +142,8 @@ export default function App() {
     if (!question || selected !== null) return
     const timeMs = performance.now() - questionStartRef.current
     setSelected(label)
+    // Let the player hear the note they just read (the correct pitch either way)
+    if (soundOn) playNote(question.midi)
 
     const record: AnswerRecord = {
       note: `${question.answer}${question.note.octave}`,
@@ -139,6 +171,7 @@ export default function App() {
   if (screen === 'start') {
     return (
       <main className="app">
+        {soundToggle}
         <h1>🎵 Note Reading Trainer 🎶</h1>
         <p className="subtitle">
           Can you name the notes? {ROUND_LENGTH} notes per round — be quick and
@@ -165,7 +198,9 @@ export default function App() {
             [
               ['treble', '🐦 Treble Clef 𝄞'],
               ['bass', '🐻 Bass Clef 𝄢'],
-              ['both', '🎲 Both Clefs'],
+              ['alto', '🦊 Alto Clef 𝄡'],
+              ['tenor', '🐸 Tenor Clef 𝄡'],
+              ['both', '🎲 All Clefs'],
             ] as [ClefMode, string][]
           ).map(([m, label]) => {
             const b = loadBest(m, level)
@@ -190,6 +225,7 @@ export default function App() {
     const hasKeys = answers.some((a) => a.key)
     return (
       <main className="app">
+        {soundToggle}
         <h1>Round Complete!</h1>
         <div className="stars">{starsFor(score).stars}</div>
         <p className="subtitle">{starsFor(score).message}</p>
@@ -254,6 +290,7 @@ export default function App() {
   // playing
   return (
     <main className="app">
+      {soundToggle}
       <header className="hud">
         <span>
           🎵 {questionNumber}/{ROUND_LENGTH}

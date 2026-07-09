@@ -84,6 +84,42 @@ function AccidentalGlyph({
   )
 }
 
+// Font-glyph clefs: unicode char, anchor staff position, and hand-calibrated
+// baseline offset / size (font glyphs carry no engraving metrics)
+const CLEF_GLYPHS: Record<
+  Note['clef'],
+  { glyph: string; x: number; position: number; baseline: number; fontSize: number }
+> = {
+  treble: {
+    glyph: '\u{1D11E}',
+    x: 28,
+    position: 2,
+    baseline: LINE_GAP * 1.8,
+    fontSize: LINE_GAP * 8,
+  },
+  bass: {
+    glyph: '\u{1D122}',
+    x: 30,
+    position: 6,
+    baseline: LINE_GAP * 2.5,
+    fontSize: LINE_GAP * 5.6,
+  },
+  alto: {
+    glyph: '\u{1D121}',
+    x: 30,
+    position: 4,
+    baseline: LINE_GAP * 2.5,
+    fontSize: LINE_GAP * 6.4,
+  },
+  tenor: {
+    glyph: '\u{1D121}',
+    x: 30,
+    position: 6,
+    baseline: LINE_GAP * 2.5,
+    fontSize: LINE_GAP * 6.4,
+  },
+}
+
 interface StaffProps {
   note: Note
   keySignature?: KeySignature
@@ -120,28 +156,17 @@ export function Staff({ note, keySignature }: StaffProps) {
         />
       ))}
 
-      {/* Clef glyph, anchored to its reference line (G4 for treble, F3 for bass) */}
-      {note.clef === 'treble' ? (
-        <text
-          ref={clefRef}
-          x={28}
-          y={yFor(2) + LINE_GAP * 1.8}
-          fontSize={LINE_GAP * 8}
-          fill="currentColor"
-        >
-          {'\u{1D11E}'}
-        </text>
-      ) : (
-        <text
-          ref={clefRef}
-          x={30}
-          y={yFor(6) + LINE_GAP * 2.5}
-          fontSize={LINE_GAP * 5.6}
-          fill="currentColor"
-        >
-          {'\u{1D122}'}
-        </text>
-      )}
+      {/* Clef glyph, anchored to its reference line: G4 (treble), F3 (bass),
+          or the middle-C line of the C clef (alto: line 3, tenor: line 4) */}
+      <text
+        ref={clefRef}
+        x={CLEF_GLYPHS[note.clef].x}
+        y={yFor(CLEF_GLYPHS[note.clef].position) + CLEF_GLYPHS[note.clef].baseline}
+        fontSize={CLEF_GLYPHS[note.clef].fontSize}
+        fill="currentColor"
+      >
+        {CLEF_GLYPHS[note.clef].glyph}
+      </text>
 
       {/* Key signature */}
       {keySignature?.positions[note.clef].map((position, i) => (

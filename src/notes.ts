@@ -1,4 +1,6 @@
-export type Clef = 'treble' | 'bass'
+export type Clef = 'treble' | 'bass' | 'alto' | 'tenor'
+export const CLEFS: Clef[] = ['treble', 'bass', 'alto', 'tenor']
+/** 'both' is the historical id for "random clef" (kept for stored best scores) */
 export type ClefMode = Clef | 'both'
 export type Level = 'easy' | 'medium' | 'hard'
 export type Accidental = 'sharp' | 'flat'
@@ -36,16 +38,20 @@ function diatonicIndex(letter: NoteLetter, octave: number): number {
   return octave * 7 + LETTERS.indexOf(letter)
 }
 
-// Bottom line of each staff: E4 for treble, G2 for bass
+// Bottom line of each staff: E4 treble, G2 bass, F3 alto, D3 tenor
 const BOTTOM_LINE: Record<Clef, number> = {
   treble: diatonicIndex('E', 4),
   bass: diatonicIndex('G', 2),
+  alto: diatonicIndex('F', 3),
+  tenor: diatonicIndex('D', 3),
 }
 
 // Playable ranges (one ledger line above and below the staff)
 const RANGES: Record<Clef, [low: [NoteLetter, number], high: [NoteLetter, number]]> = {
   treble: [['C', 4], ['A', 5]],
   bass: [['E', 2], ['C', 4]],
+  alto: [['D', 3], ['B', 4]],
+  tenor: [['B', 2], ['G', 4]],
 }
 
 function buildNotes(clef: Clef): Note[] {
@@ -64,29 +70,42 @@ function buildNotes(clef: Clef): Note[] {
   return notes
 }
 
-const NOTE_POOL: Record<Clef, Note[]> = {
-  treble: buildNotes('treble'),
-  bass: buildNotes('bass'),
-}
+const NOTE_POOL = Object.fromEntries(CLEFS.map((c) => [c, buildNotes(c)])) as Record<
+  Clef,
+  Note[]
+>
 
 // Key signatures up to four accidentals. Glyph staff positions follow standard
-// engraving order; bass positions are the treble positions shifted down a third.
+// engraving order. Bass/alto are the treble positions shifted down; tenor flats
+// shift up, but tenor sharps use the exceptional pattern that starts F♯ low to
+// stay inside the staff.
 const SHARP_ORDER: NoteLetter[] = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
-const TREBLE_SHARP_POSITIONS = [8, 5, 9, 6, 3, 7, 4]
 const FLAT_ORDER: NoteLetter[] = ['B', 'E', 'A', 'D', 'G', 'C', 'F']
-const TREBLE_FLAT_POSITIONS = [4, 7, 3, 6, 2, 5, 1]
+
+const SHARP_POSITIONS: Record<Clef, number[]> = {
+  treble: [8, 5, 9, 6, 3, 7, 4],
+  bass: [6, 3, 7, 4, 1, 5, 2],
+  alto: [7, 4, 8, 5, 2, 6, 3],
+  tenor: [2, 6, 3, 7, 4, 8, 5],
+}
+
+const FLAT_POSITIONS: Record<Clef, number[]> = {
+  treble: [4, 7, 3, 6, 2, 5, 1],
+  bass: [2, 5, 1, 4, 0, 3, -1],
+  alto: [3, 6, 2, 5, 1, 4, 0],
+  tenor: [5, 8, 4, 7, 3, 6, 2],
+}
 
 function makeKey(name: string, accidental: Accidental, count: number): KeySignature {
   const order = accidental === 'sharp' ? SHARP_ORDER : FLAT_ORDER
-  const treble =
-    accidental === 'sharp'
-      ? TREBLE_SHARP_POSITIONS.slice(0, count)
-      : TREBLE_FLAT_POSITIONS.slice(0, count)
+  const table = accidental === 'sharp' ? SHARP_POSITIONS : FLAT_POSITIONS
   return {
     name,
     accidental,
     letters: order.slice(0, count),
-    positions: { treble, bass: treble.map((p) => p - 2) },
+    positions: Object.fromEntries(
+      CLEFS.map((c) => [c, table[c].slice(0, count)]),
+    ) as Record<Clef, number[]>,
   }
 }
 
@@ -124,6 +143,15 @@ export interface Question {
   /** The correct label, e.g. "F♯" */
   answer: string
   options: string[]
+  /** MIDI number of the effective pitch, for audio playback */
+  midi: number
+}
+
+const SEMITONES: Record<NoteLetter, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
+
+function midiOf(letter: NoteLetter, octave: number, accidental?: Accidental): number {
+  const shift = accidental === 'sharp' ? 1 : accidental === 'flat' ? -1 : 0
+  return (octave + 1) * 12 + SEMITONES[letter] + shift
 }
 
 function pick<T>(arr: T[]): T {
@@ -168,7 +196,7 @@ function distractors(answer: string, letter: NoteLetter, level: Level): string[]
 }
 
 export function makeQuestion(mode: ClefMode, level: Level, previous?: Note): Question {
-  const clef: Clef = mode === 'both' ? (Math.random() < 0.5 ? 'treble' : 'bass') : mode
+  const clef: Clef = mode === 'both' ? pick(CLEFS) : mode
 
   let base = pick(NOTE_POOL[clef])
   // Avoid showing the exact same staff position twice in a row
@@ -194,5 +222,6 @@ export function makeQuestion(mode: ClefMode, level: Level, previous?: Note): Que
   const answer = noteLabel(note.letter, effectiveAccidental)
 
   const options = shuffle([answer, ...distractors(answer, note.letter, level)])
-  return { note, key, answer, options }
+  const midi = midiOf(note.letter, note.octave, effectiveAccidental)
+  return { note, key, answer, options, midi }
 }

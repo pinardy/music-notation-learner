@@ -8,11 +8,17 @@ A note is shown on a staff and you pick its name from four options. Each round
 is 10 notes; your score and per-note response time are recorded, and your best
 result per mode is saved in the browser (localStorage).
 
+Correct answers play the note's pitch, synthesized with the Web Audio API
+(toggle with the 🔊 button).
+
 ## Modes
 
 - **Treble clef** — C4 to A5 (one ledger line above/below the staff)
 - **Bass clef** — E2 to C4
-- **Both** — random clef per question
+- **Alto clef** — D3 to B4 (C clef on the middle line)
+- **Tenor clef** — B2 to G4 (C clef on the fourth line, with the standard
+  low-starting sharp key signature pattern)
+- **All clefs** — random clef per question
 
 ## Levels
 
