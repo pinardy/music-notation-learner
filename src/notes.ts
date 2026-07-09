@@ -228,6 +228,8 @@ export interface QuestionOpts {
   previous?: Question
   /** Adaptive selection: relative weight per staff position (default uniform) */
   weight?: PositionWeight
+  /** Pitch pool for the name-the-note ear level (default naturals) */
+  earPool?: EarPool
 }
 
 function weightedIndex(clef: Clef, low: number, high: number, weight?: PositionWeight): number {
@@ -337,24 +339,66 @@ function noteName(n: Note): string {
   return `${noteLabel(n.letter, n.accidental)}${n.octave}`
 }
 
-function makeEarQuestion(clef: Clef, level: Level): Question {
+export type EarPool = 'natural' | 'some' | 'all'
+
+// Pitch classes for name-the-note. Enharmonic spellings sound identical, so
+// the chromatic pool labels both (F♯/G♭) — the reveal picks one spelling.
+interface PitchEntry {
+  letter: NoteLetter
+  accidental?: Accidental
+  label: string
+}
+
+const NATURAL_PITCHES: PitchEntry[] = LETTERS.map((l) => ({ letter: l, label: l }))
+
+const EAR_POOLS: Record<EarPool, PitchEntry[]> = {
+  natural: NATURAL_PITCHES,
+  // The first accidentals learners meet (G major / F major)
+  some: [
+    ...NATURAL_PITCHES,
+    { letter: 'F', accidental: 'sharp', label: 'F♯' },
+    { letter: 'B', accidental: 'flat', label: 'B♭' },
+  ],
+  all: [
+    { letter: 'C', label: 'C' },
+    { letter: 'C', accidental: 'sharp', label: 'C♯/D♭' },
+    { letter: 'D', label: 'D' },
+    { letter: 'D', accidental: 'sharp', label: 'D♯/E♭' },
+    { letter: 'E', label: 'E' },
+    { letter: 'F', label: 'F' },
+    { letter: 'F', accidental: 'sharp', label: 'F♯/G♭' },
+    { letter: 'G', label: 'G' },
+    { letter: 'G', accidental: 'sharp', label: 'G♯/A♭' },
+    { letter: 'A', label: 'A' },
+    { letter: 'A', accidental: 'sharp', label: 'A♯/B♭' },
+    { letter: 'B', label: 'B' },
+  ],
+}
+
+function makeEarQuestion(clef: Clef, level: Level, pool: EarPool): Question {
   const [low, high] = rangeOf(clef, false)
 
   if (level === 'expert') {
     // Name a single heard note. Kept within one fixed octave (C4-B4) so pitch
     // memory can form; revealed on the treble staff.
-    const idx = diatonicIndex(pick(LETTERS), 4)
-    const note = noteAt('treble', idx)
+    const entries = EAR_POOLS[pool]
+    const entry = pick(entries)
+    const note = {
+      ...noteAt('treble', diatonicIndex(entry.letter, 4)),
+      accidental: entry.accidental,
+    }
     return {
       clef: 'treble',
       notes: [note],
-      answer: note.letter,
+      answer: entry.label,
       display: noteName(note),
       options: shuffle([
-        note.letter,
-        ...shuffle(LETTERS.filter((l) => l !== note.letter)).slice(0, 3),
+        entry.label,
+        ...shuffle(entries.filter((e) => e.label !== entry.label))
+          .slice(0, 3)
+          .map((e) => e.label),
       ]),
-      midis: [midiOf(note.letter, note.octave)],
+      midis: [midiOf(note.letter, note.octave, note.accidental)],
     }
   }
 
@@ -403,7 +447,7 @@ function makeEarQuestion(clef: Clef, level: Level): Question {
 }
 
 export function makeQuestion(opts: QuestionOpts): Question {
-  const { mode, level, gameType, extended, previous, weight } = opts
+  const { mode, level, gameType, extended, previous, weight, earPool } = opts
   for (let attempt = 0; ; attempt++) {
     // Ear training reveals on treble/bass only — the clefs beginners read
     const clef: Clef =
@@ -418,7 +462,7 @@ export function makeQuestion(opts: QuestionOpts): Question {
         : gameType === 'chords'
           ? makeChordQuestion(clef, extended)
           : gameType === 'ear'
-            ? makeEarQuestion(clef, level)
+            ? makeEarQuestion(clef, level, earPool ?? 'natural')
             : makeNotesQuestion(clef, level, extended, weight)
     // Avoid repeating the previous question exactly (give up after a few tries
     // in case the pool is somehow tiny)

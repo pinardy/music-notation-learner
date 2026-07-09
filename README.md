@@ -19,7 +19,9 @@ Correct answers play the pitch(es), synthesized with the Web Audio API
 - **Ear Training** — the app plays, you identify by ear, and the staff is
   revealed after answering: higher-or-lower (easy), interval distance
   (medium), chord quality — major/minor/diminished natural triads (hard),
-  or name a single heard note from four choices, within C4–B4 (expert)
+  or name a single heard note from four choices, within C4–B4 (expert).
+  Name-the-note has its own difficulty pools: naturals only, naturals plus
+  F♯/B♭, or all 12 chromatic notes (enharmonic answers shown as e.g. F♯/G♭)
 
 An **extended range** toggle widens every game from one ledger line to three
 ledger lines above and below the staff.

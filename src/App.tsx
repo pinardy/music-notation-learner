@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Staff } from './Staff'
 import { makeQuestion } from './notes'
-import type { ClefMode, GameType, Level, Question } from './notes'
+import type { ClefMode, EarPool, GameType, Level, Question } from './notes'
 import type { PositionWeight } from './notes'
 import { playNotes } from './audio'
 import { buildAdaptiveWeights, saveRound } from './history'
@@ -38,6 +38,12 @@ const PROMPTS: Record<GameType, string> = {
   ear: 'Listen carefully…',
 }
 
+const EAR_POOL_CHOICES: { id: EarPool; label: string; blurb: string }[] = [
+  { id: 'natural', label: '🌱 Naturals', blurb: '7 white keys' },
+  { id: 'some', label: '🌟 + F♯ & B♭', blurb: 'First accidentals' },
+  { id: 'all', label: '🚀 All 12 notes', blurb: 'Sharps & flats' },
+]
+
 const EAR_PROMPTS: Record<Level, string> = {
   easy: 'Was the second note higher or lower?',
   medium: 'How far apart were the two notes?',
@@ -72,7 +78,7 @@ interface BestResult {
 
 type Screen = 'start' | 'playing' | 'summary' | 'stats'
 
-function bestKey(mode: ClefMode, level: Level, gameType: GameType, extended: boolean) {
+function bestKey(mode: ClefMode, level: string, gameType: GameType, extended: boolean) {
   // Note-naming at standard range keeps the original keys so old bests survive
   if (gameType === 'notes' && !extended) {
     return level === 'easy' ? `note-game-best-${mode}` : `note-game-best-${level}-${mode}`
@@ -84,7 +90,7 @@ function bestKey(mode: ClefMode, level: Level, gameType: GameType, extended: boo
 
 function loadBest(
   mode: ClefMode,
-  level: Level,
+  level: string,
   gameType: GameType,
   extended: boolean,
 ): BestResult | null {
@@ -106,6 +112,7 @@ export default function App() {
   const [level, setLevel] = useState<Level>('easy')
   const [gameType, setGameType] = useState<GameType>('notes')
   const [extended, setExtended] = useState(false)
+  const [earPool, setEarPool] = useState<EarPool>('natural')
   const [question, setQuestion] = useState<Question | null>(null)
   const [questionNumber, setQuestionNumber] = useState(0)
   const [answers, setAnswers] = useState<AnswerRecord[]>([])
@@ -133,6 +140,12 @@ export default function App() {
 
   const score = answers.filter((a) => a.correct).length
   const totalTimeMs = answers.reduce((sum, a) => sum + a.timeMs, 0)
+
+  // Best-score bucket: the name-the-note pools each keep their own best
+  const levelKey =
+    gameType === 'ear' && level === 'expert' && earPool !== 'natural'
+      ? `expert-${earPool}`
+      : level
 
   function toggleSound() {
     setSoundOn((on) => {
@@ -175,6 +188,7 @@ export default function App() {
       gameType,
       extended,
       weight: weightRef.current,
+      earPool,
     })
     setQuestion(first)
     if (gameType === 'ear') playQuestion(first)
@@ -211,7 +225,7 @@ export default function App() {
     const avgTimeMs =
       finalAnswers.reduce((sum, a) => sum + a.timeMs, 0) / finalAnswers.length
 
-    const previous = loadBest(mode, level, gameType, extended)
+    const previous = loadBest(mode, levelKey, gameType, extended)
     const isBetter =
       !previous ||
       finalScore > previous.score ||
@@ -220,7 +234,7 @@ export default function App() {
       const result = { score: finalScore, avgTimeMs }
       try {
         localStorage.setItem(
-          bestKey(mode, level, gameType, extended),
+          bestKey(mode, levelKey, gameType, extended),
           JSON.stringify(result),
         )
       } catch {
@@ -266,6 +280,7 @@ export default function App() {
           extended,
           previous: question,
           weight: weightRef.current,
+          earPool,
         })
         setQuestion(next)
         if (gameType === 'ear') playQuestion(next)
@@ -330,6 +345,23 @@ export default function App() {
           </div>
         )}
 
+        {gameType === 'ear' && level === 'expert' && (
+          <div className="level-picker" role="radiogroup" aria-label="Note pool">
+            {EAR_POOL_CHOICES.map((p) => (
+              <button
+                key={p.id}
+                role="radio"
+                aria-checked={earPool === p.id}
+                className={`level-button${earPool === p.id ? ' active' : ''}`}
+                onClick={() => setEarPool(p.id)}
+              >
+                <span className="level-label">{p.label}</span>
+                <span className="level-blurb">{p.blurb}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {gameType !== 'ear' && (
         <div className="toggle-row">
           <button
@@ -363,7 +395,7 @@ export default function App() {
         <div className="mode-buttons">
           {gameType === 'ear' ? (
             (() => {
-              const b = loadBest('both', level, 'ear', false)
+              const b = loadBest('both', levelKey, 'ear', false)
               return (
                 <button className="mode-button" onClick={() => startRound('both')}>
                   <span className="mode-label">🎧 Start Listening!</span>
@@ -385,7 +417,7 @@ export default function App() {
                 ['both', '🎲 All Clefs'],
               ] as [ClefMode, string][]
             ).map(([m, label]) => {
-              const b = loadBest(m, level, gameType, extended)
+              const b = loadBest(m, levelKey, gameType, extended)
               return (
                 <button key={m} className="mode-button" onClick={() => startRound(m)}>
                   <span className="mode-label">{label}</span>
