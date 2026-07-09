@@ -54,10 +54,11 @@ const EAR_PROMPTS: Record<Level, string> = {
 const PRAISE = ['Great job! 🎉', 'Awesome! ⭐', 'You rock! 🎸', 'Super! ✨', 'Wow! 🌈']
 const BURST_EMOJI = ['🎉', '⭐', '🎵', '✨', '🎈', '🌟']
 
-function starsFor(score: number): { stars: string; message: string } {
-  if (score >= 9) return { stars: '🌟🌟🌟', message: 'Amazing! You are a note master!' }
-  if (score >= 7) return { stars: '🌟🌟', message: 'Great playing! Almost perfect!' }
-  if (score >= 4) return { stars: '🌟', message: 'Nice work! Keep practicing!' }
+function starsFor(score: number, total: number): { stars: string; message: string } {
+  const ratio = total > 0 ? score / total : 0
+  if (ratio >= 0.9) return { stars: '🌟🌟🌟', message: 'Amazing! You are a note master!' }
+  if (ratio >= 0.7) return { stars: '🌟🌟', message: 'Great playing! Almost perfect!' }
+  if (ratio >= 0.4) return { stars: '🌟', message: 'Nice work! Keep practicing!' }
   return { stars: '💪', message: 'Good try! You will get it next time!' }
 }
 
@@ -139,14 +140,21 @@ export default function App() {
       return false
     }
   })
+  // When set, the round replays this fixed list of questions (a review round)
+  // instead of generating new ones; null means a normal round.
+  const [reviewQueue, setReviewQueue] = useState<Question[] | null>(null)
   const weightRef = useRef<PositionWeight | undefined>(undefined)
   const questionStartRef = useRef(0)
   const timeoutRef = useRef<number | undefined>(undefined)
+  // Full Question objects shown this round, parallel to `answers`, so a review
+  // round can replay exactly the ones that were missed.
+  const askedRef = useRef<Question[]>([])
 
   useEffect(() => () => window.clearTimeout(timeoutRef.current), [])
 
   const score = answers.filter((a) => a.correct).length
   const totalTimeMs = answers.reduce((sum, a) => sum + a.timeMs, 0)
+  const roundLength = reviewQueue ? reviewQueue.length : ROUND_LENGTH
 
   // Reference note (a "do") only applies to the name-the-note ear level
   const refActive = gameType === 'ear' && level === 'expert' && reference
@@ -196,9 +204,11 @@ export default function App() {
 
   function startRound(selectedMode: ClefMode) {
     setMode(selectedMode)
+    setReviewQueue(null)
     setAnswers([])
     setSelected(null)
     setQuestionNumber(1)
+    askedRef.current = []
     // Weights are computed once per round from the play history
     weightRef.current =
       adaptive && gameType === 'notes' ? buildAdaptiveWeights() : undefined
@@ -210,6 +220,22 @@ export default function App() {
       weight: weightRef.current,
       earPool,
     })
+    setQuestion(first)
+    if (gameType === 'ear') playQuestion(first)
+    setScreen('playing')
+    questionStartRef.current = performance.now()
+  }
+
+  // Replay exactly the questions missed this round, in order
+  function startReviewRound() {
+    const missed = askedRef.current.filter((_, i) => !answers[i]?.correct)
+    if (missed.length === 0) return
+    setReviewQueue(missed)
+    setAnswers([])
+    setSelected(null)
+    setQuestionNumber(1)
+    askedRef.current = []
+    const first = missed[0]
     setQuestion(first)
     if (gameType === 'ear') playQuestion(first)
     setScreen('playing')
@@ -252,6 +278,14 @@ export default function App() {
         timeMs: a.timeMs,
       })),
     })
+    // Review rounds are variable-length practice — they still feed stats and
+    // adaptive weighting (saved above) but don't compete for a best score
+    if (reviewQueue) {
+      setBest(null)
+      setScreen('summary')
+      return
+    }
+
     const finalScore = finalAnswers.filter((a) => a.correct).length
     const avgTimeMs =
       finalAnswers.reduce((sum, a) => sum + a.timeMs, 0) / finalAnswers.length
@@ -297,22 +331,26 @@ export default function App() {
     }
     const nextAnswers = [...answers, record]
     setAnswers(nextAnswers)
+    askedRef.current = [...askedRef.current, question]
 
     timeoutRef.current = window.setTimeout(() => {
-      if (nextAnswers.length >= ROUND_LENGTH) {
+      if (nextAnswers.length >= roundLength) {
         finishRound(nextAnswers)
       } else {
         setSelected(null)
         setQuestionNumber((n) => n + 1)
-        const next = makeQuestion({
-          mode,
-          level,
-          gameType,
-          extended,
-          previous: question,
-          weight: weightRef.current,
-          earPool,
-        })
+        // In a review round, replay the stored question; otherwise generate one
+        const next = reviewQueue
+          ? reviewQueue[nextAnswers.length]
+          : makeQuestion({
+              mode,
+              level,
+              gameType,
+              extended,
+              previous: question,
+              weight: weightRef.current,
+              earPool,
+            })
         setQuestion(next)
         if (gameType === 'ear') playQuestion(next)
         questionStartRef.current = performance.now()
@@ -499,16 +537,18 @@ export default function App() {
   if (screen === 'summary') {
     const avgTimeMs = totalTimeMs / answers.length
     const hasKeys = answers.some((a) => a.key)
+    const isReview = reviewQueue !== null
+    const missedCount = answers.filter((a) => !a.correct).length
     return (
       <main className="app">
         {soundToggle}
-        <h1>Round Complete!</h1>
-        <div className="stars">{starsFor(score).stars}</div>
-        <p className="subtitle">{starsFor(score).message}</p>
+        <h1>{isReview ? 'Review Complete!' : 'Round Complete!'}</h1>
+        <div className="stars">{starsFor(score, roundLength).stars}</div>
+        <p className="subtitle">{starsFor(score, roundLength).message}</p>
         <div className="summary-stats">
           <div className="stat">
             <span className="stat-value">
-              {score}/{ROUND_LENGTH}
+              {score}/{roundLength}
             </span>
             <span className="stat-label">Score</span>
           </div>
@@ -554,7 +594,15 @@ export default function App() {
           </tbody>
         </table>
         <div className="summary-actions">
-          <button className="primary" onClick={() => startRound(mode)}>
+          {missedCount > 0 && (
+            <button className="primary" onClick={startReviewRound}>
+              Practice {missedCount} miss{missedCount > 1 ? 'es' : ''} 💪
+            </button>
+          )}
+          <button
+            className={missedCount > 0 ? undefined : 'primary'}
+            onClick={() => startRound(mode)}
+          >
             Play again 🎮
           </button>
           <button onClick={() => setScreen('start')}>Change mode</button>
@@ -570,7 +618,7 @@ export default function App() {
       {soundToggle}
       <header className="hud">
         <span>
-          🎵 {questionNumber}/{ROUND_LENGTH}
+          {reviewQueue ? '💪' : '🎵'} {questionNumber}/{roundLength}
         </span>
         <span>🎯 {score}</span>
         <span>⏱️ {formatSeconds(totalTimeMs)}</span>

@@ -483,6 +483,8 @@ h1 {
 
 .summary-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.85rem;
 }
 

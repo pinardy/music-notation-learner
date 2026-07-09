@@ -36,6 +36,10 @@ staff colored by accuracy, and a "practice these" list of your weakest notes.
 question selection using that history: notes you miss often or answer slowly
 come up more, unseen notes get a small boost, and mastered notes appear less.
 
+**Review round** — if you miss any questions, the summary offers a "Practice N
+misses 💪" button that replays exactly those questions (any game type). Review
+rounds feed the stats/adaptive history but don't compete for best scores.
+
 ## Modes
 
 - **Treble clef** — C4 to A5 (one ledger line above/below the staff)
