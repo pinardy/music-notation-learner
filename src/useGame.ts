@@ -3,6 +3,7 @@ import { makeQuestion } from './notes'
 import type { ClefMode, EarPool, GameType, Level, PositionWeight, Question } from './notes'
 import { playNotes } from './audio'
 import { buildAdaptiveWeights, saveRound } from './history'
+import { usePersistentFlag } from './usePersistentFlag'
 import {
   ROUND_LENGTH,
   FEEDBACK_MS,
@@ -27,27 +28,9 @@ export function useGame() {
   const [answers, setAnswers] = useState<AnswerRecord[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [best, setBest] = useState<BestResult | null>(null)
-  const [soundOn, setSoundOn] = useState(() => {
-    try {
-      return localStorage.getItem('note-game-sound') !== 'off'
-    } catch {
-      return true
-    }
-  })
-  const [adaptive, setAdaptive] = useState(() => {
-    try {
-      return localStorage.getItem('note-game-adaptive') !== 'off'
-    } catch {
-      return true
-    }
-  })
-  const [reference, setReference] = useState(() => {
-    try {
-      return localStorage.getItem('note-game-ear-reference') === 'on'
-    } catch {
-      return false
-    }
-  })
+  const [soundOn, toggleSound] = usePersistentFlag('note-game-sound', true)
+  const [adaptive, toggleAdaptive] = usePersistentFlag('note-game-adaptive', true)
+  const [reference, toggleReference] = usePersistentFlag('note-game-ear-reference', false)
   // When set, the round replays this fixed list of questions (a review round)
   // instead of generating new ones; null means a normal round.
   const [reviewQueue, setReviewQueue] = useState<Question[] | null>(null)
@@ -80,39 +63,6 @@ export function useGame() {
     setGameType(id)
     // 'expert' only exists in ear training
     if (id !== 'ear' && level === 'expert') setLevel('easy')
-  }
-
-  function toggleSound() {
-    setSoundOn((on) => {
-      try {
-        localStorage.setItem('note-game-sound', on ? 'off' : 'on')
-      } catch {
-        // preference just won't persist
-      }
-      return !on
-    })
-  }
-
-  function toggleAdaptive() {
-    setAdaptive((on) => {
-      try {
-        localStorage.setItem('note-game-adaptive', on ? 'off' : 'on')
-      } catch {
-        // preference just won't persist
-      }
-      return !on
-    })
-  }
-
-  function toggleReference() {
-    setReference((on) => {
-      try {
-        localStorage.setItem('note-game-ear-reference', on ? 'off' : 'on')
-      } catch {
-        // preference just won't persist
-      }
-      return !on
-    })
   }
 
   // Chord-ish sounds get a light roll; melodic ear questions a real gap.

@@ -4,17 +4,12 @@ import type { HeatCell } from './Staff'
 import { CLEFS, noteForPosition } from './notes'
 import type { Clef, GameType } from './notes'
 import { aggregatePositions, loadHistory } from './history'
+import { GAMES, formatSeconds } from './gameConfig'
 
-const GAME_LABELS: Record<GameType, string> = {
-  notes: '🎼 Notes',
-  intervals: '📏 Intervals',
-  chords: '🎹 Chords',
-  ear: '🎧 Ear Training',
-}
-
-function formatSeconds(ms: number): string {
-  return `${(ms / 1000).toFixed(1)}s`
-}
+const GAME_LABELS = Object.fromEntries(GAMES.map((g) => [g.id, g.label])) as Record<
+  GameType,
+  string
+>
 
 function percent(correct: number, attempts: number): string {
   return attempts ? `${Math.round((correct / attempts) * 100)}%` : '—'
