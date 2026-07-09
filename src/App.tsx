@@ -336,60 +336,69 @@ export default function App() {
 
         <div className="start-columns">
         <div className="setup">
-        <div className="level-picker game-picker" role="radiogroup" aria-label="Game">
-          {GAMES.map((g) => (
-            <button
-              key={g.id}
-              role="radio"
-              aria-checked={gameType === g.id}
-              className={`level-button${gameType === g.id ? ' active' : ''}`}
-              onClick={() => {
-                setGameType(g.id)
-                // 'expert' only exists in ear training
-                if (g.id !== 'ear' && level === 'expert') setLevel('easy')
-              }}
-            >
-              <span className="level-label">{g.label}</span>
-              <span className="level-blurb">{g.blurb}</span>
-            </button>
-          ))}
+        <div className="picker-group">
+          <span className="picker-label">🎮 Choose a game</span>
+          <div className="level-picker game-picker" role="radiogroup" aria-label="Game">
+            {GAMES.map((g) => (
+              <button
+                key={g.id}
+                role="radio"
+                aria-checked={gameType === g.id}
+                className={`level-button${gameType === g.id ? ' active' : ''}`}
+                onClick={() => {
+                  setGameType(g.id)
+                  // 'expert' only exists in ear training
+                  if (g.id !== 'ear' && level === 'expert') setLevel('easy')
+                }}
+              >
+                <span className="level-label">{g.label}</span>
+                <span className="level-blurb">{g.blurb}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {(gameType === 'notes' || gameType === 'ear') && (
-          <div
-            className={`level-picker${gameType === 'ear' ? ' game-picker' : ''}`}
-            role="radiogroup"
-            aria-label="Difficulty"
-          >
-            {(gameType === 'ear' ? EAR_LEVELS : LEVELS).map((l) => (
-              <button
-                key={l.id}
-                role="radio"
-                aria-checked={level === l.id}
-                className={`level-button${level === l.id ? ' active' : ''}`}
-                onClick={() => setLevel(l.id)}
-              >
-                <span className="level-label">{l.label}</span>
-                <span className="level-blurb">{l.blurb}</span>
-              </button>
-            ))}
+          <div className="picker-group">
+            <span className="picker-label">⭐ Difficulty</span>
+            <div
+              className={`chip-picker${gameType === 'ear' ? ' cols-2' : ''}`}
+              role="radiogroup"
+              aria-label="Difficulty"
+            >
+              {(gameType === 'ear' ? EAR_LEVELS : LEVELS).map((l) => (
+                <button
+                  key={l.id}
+                  role="radio"
+                  aria-checked={level === l.id}
+                  className={`chip-button${level === l.id ? ' active' : ''}`}
+                  onClick={() => setLevel(l.id)}
+                >
+                  <span className="chip-label">{l.label}</span>
+                  <span className="level-blurb">{l.blurb}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {gameType === 'ear' && level === 'expert' && (
-          <div className="level-picker" role="radiogroup" aria-label="Note pool">
-            {EAR_POOL_CHOICES.map((p) => (
-              <button
-                key={p.id}
-                role="radio"
-                aria-checked={earPool === p.id}
-                className={`level-button${earPool === p.id ? ' active' : ''}`}
-                onClick={() => setEarPool(p.id)}
-              >
-                <span className="level-label">{p.label}</span>
-                <span className="level-blurb">{p.blurb}</span>
-              </button>
-            ))}
+          <div className="picker-group">
+            <span className="picker-label">🎵 Which notes</span>
+            <div className="chip-picker" role="radiogroup" aria-label="Note pool">
+              {EAR_POOL_CHOICES.map((p) => (
+                <button
+                  key={p.id}
+                  role="radio"
+                  aria-checked={earPool === p.id}
+                  className={`chip-button${earPool === p.id ? ' active' : ''}`}
+                  onClick={() => setEarPool(p.id)}
+                >
+                  <span className="chip-label">{p.label}</span>
+                  <span className="level-blurb">{p.blurb}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

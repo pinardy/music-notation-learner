@@ -43,6 +43,25 @@ h1 {
 
 /* --- Start screen --- */
 
+.picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.picker-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  text-align: left;
+  padding-left: 0.35rem;
+}
+
+/* Game picker: big white cards with a purple "selected" (the primary choice) */
 .level-picker {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -76,6 +95,49 @@ h1 {
 
 .game-picker {
   grid-template-columns: repeat(2, 1fr);
+}
+
+/* Difficulty / note-pool pickers: flatter amber "chips" so settings read
+   clearly differently from the game cards above them */
+.chip-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.chip-picker.cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.chip-button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 999px;
+  border: 2px dashed var(--border);
+  background: #fbf7ff;
+  box-shadow: none;
+}
+
+.chip-button:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--candy-amber);
+}
+
+.chip-button.active {
+  border-style: solid;
+  border-color: var(--candy-amber);
+  background: #fff4e0;
+  box-shadow: 0 3px 0 #f3cd8b;
+}
+
+.chip-label {
+  font-weight: 700;
+  font-size: 0.95rem;
 }
 
 /* --- Ear training --- */
