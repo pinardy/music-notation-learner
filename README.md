@@ -21,7 +21,9 @@ Correct answers play the pitch(es), synthesized with the Web Audio API
   (medium), chord quality — major/minor/diminished natural triads (hard),
   or name a single heard note from four choices, within C4–B4 (expert).
   Name-the-note has its own difficulty pools: naturals only, naturals plus
-  F♯/B♭, or all 12 chromatic notes (enharmonic answers shown as e.g. F♯/G♭)
+  F♯/B♭, or all 12 chromatic notes (enharmonic answers shown as e.g. F♯/G♭).
+  A **reference note** toggle plays a "C" first, turning the harder pools from
+  absolute-pitch guessing into learnable relative pitch
 
 An **extended range** toggle widens every game from one ledger line to three
 ledger lines above and below the staff.

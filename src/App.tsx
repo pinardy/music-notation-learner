@@ -132,6 +132,13 @@ export default function App() {
       return true
     }
   })
+  const [reference, setReference] = useState(() => {
+    try {
+      return localStorage.getItem('note-game-ear-reference') === 'on'
+    } catch {
+      return false
+    }
+  })
   const weightRef = useRef<PositionWeight | undefined>(undefined)
   const questionStartRef = useRef(0)
   const timeoutRef = useRef<number | undefined>(undefined)
@@ -141,11 +148,17 @@ export default function App() {
   const score = answers.filter((a) => a.correct).length
   const totalTimeMs = answers.reduce((sum, a) => sum + a.timeMs, 0)
 
-  // Best-score bucket: the name-the-note pools each keep their own best
-  const levelKey =
-    gameType === 'ear' && level === 'expert' && earPool !== 'natural'
-      ? `expert-${earPool}`
-      : level
+  // Reference note (a "do") only applies to the name-the-note ear level
+  const refActive = gameType === 'ear' && level === 'expert' && reference
+
+  // Best-score bucket: each name-the-note pool keeps its own best, and playing
+  // with the reference note is easier so it gets a separate bucket too
+  let levelKey: string = level
+  if (gameType === 'ear' && level === 'expert') {
+    levelKey = 'expert'
+    if (earPool !== 'natural') levelKey += `-${earPool}`
+    if (reference) levelKey += '-ref'
+  }
 
   function toggleSound() {
     setSoundOn((on) => {
@@ -170,7 +183,14 @@ export default function App() {
   )
 
   // Chord-ish sounds get a light roll; melodic ear questions a real gap
-  function playQuestion(q: Question) {
+  // withReference: prepend a reference C (MIDI 60, "do") before the target so
+  // the player can name it by relative pitch. Used when posing the question,
+  // but not on the answer reveal (there we sound only the note itself).
+  function playQuestion(q: Question, withReference = true) {
+    if (refActive && withReference) {
+      playNotes([60, ...q.midis], 0.75)
+      return
+    }
     playNotes(q.midis, gameType === 'ear' && level !== 'hard' ? 0.55 : 0.12)
   }
 
@@ -200,6 +220,17 @@ export default function App() {
     setAdaptive((on) => {
       try {
         localStorage.setItem('note-game-adaptive', on ? 'off' : 'on')
+      } catch {
+        // preference just won't persist
+      }
+      return !on
+    })
+  }
+
+  function toggleReference() {
+    setReference((on) => {
+      try {
+        localStorage.setItem('note-game-ear-reference', on ? 'off' : 'on')
       } catch {
         // preference just won't persist
       }
@@ -253,7 +284,7 @@ export default function App() {
     setSelected(label)
     // Let the player hear what they just read (the correct pitches either way).
     // Ear training always sounds — it's the whole game.
-    if (soundOn || gameType === 'ear') playQuestion(question)
+    if (soundOn || gameType === 'ear') playQuestion(question, false)
 
     const record: AnswerRecord = {
       shown: question.display,
@@ -359,6 +390,22 @@ export default function App() {
                 <span className="level-blurb">{p.blurb}</span>
               </button>
             ))}
+          </div>
+        )}
+
+        {gameType === 'ear' && level === 'expert' && (
+          <div className="toggle-row">
+            <button
+              className={`toggle-button${reference ? ' active' : ''}`}
+              role="switch"
+              aria-checked={reference}
+              onClick={toggleReference}
+            >
+              🎯 Reference note {reference ? 'ON' : 'OFF'}
+              <span className="level-blurb">
+                {reference ? 'Hear a “C” first' : 'No help note'}
+              </span>
+            </button>
           </div>
         )}
 
@@ -547,7 +594,9 @@ export default function App() {
             {question.key
               ? `Key: ${question.key.name}`
               : gameType === 'ear'
-                ? EAR_PROMPTS[level]
+                ? refActive && selected === null
+                  ? 'What note was that? (after the “C”)'
+                  : EAR_PROMPTS[level]
                 : PROMPTS[gameType]}
           </p>
           <div
