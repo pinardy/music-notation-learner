@@ -2,6 +2,8 @@
 
 A game for learning to read music notation, built with React + TypeScript + Vite.
 
+<img src="docs/screenshot.png" width="480" alt="A treble clef staff showing a whole note, with four colorful answer buttons below">
+
 A note is shown on a staff and you pick its name from four options. Each round
 is 10 notes; your score and per-note response time are recorded, and your best
 result per mode is saved in the browser (localStorage).
