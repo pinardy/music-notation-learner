@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import type { Accidental, KeySignature, Note } from './notes'
+import type { Accidental, Clef, KeySignature, Note } from './notes'
+import { noteForPosition } from './notes'
 
 const WIDTH = 340
 const HEIGHT = 220
@@ -223,6 +224,97 @@ export function Staff({ notes, keySignature }: StaffProps) {
           <ellipse rx={5.2} ry={3.4} fill="var(--staff-bg, #fff)" transform="rotate(-32)" />
         </g>
       ))}
+    </svg>
+  )
+}
+
+// --- Stats heatmap staff ---
+
+export interface HeatCell {
+  position: number
+  /** 0..1 fraction of correct answers */
+  accuracy: number
+  attempts: number
+}
+
+function heatColor(accuracy: number): string {
+  if (accuracy >= 0.8) return '#35c46f'
+  if (accuracy >= 0.5) return '#ffb347'
+  return '#ff6b81'
+}
+
+/**
+ * Every practiced staff position drawn as an ascending run, each notehead
+ * colored by the player's accuracy on that position.
+ */
+export function HeatStaff({ clef, cells }: { clef: Clef; cells: HeatCell[] }) {
+  const sorted = [...cells].sort((a, b) => a.position - b.position)
+  const startX = 78
+  const stepX = 30
+  const width = Math.max(WIDTH, startX + sorted.length * stepX + 24)
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${HEIGHT}`}
+      className="staff"
+      role="img"
+      aria-label={`Accuracy per note on the ${clef} clef staff`}
+    >
+      {[0, 2, 4, 6, 8].map((p) => (
+        <line
+          key={p}
+          x1={20}
+          x2={width - 12}
+          y1={yFor(p)}
+          y2={yFor(p)}
+          stroke="currentColor"
+          strokeWidth={1.5}
+        />
+      ))}
+
+      <text
+        x={CLEF_GLYPHS[clef].x}
+        y={yFor(CLEF_GLYPHS[clef].position) + CLEF_GLYPHS[clef].baseline}
+        fontSize={CLEF_GLYPHS[clef].fontSize}
+        fill="currentColor"
+      >
+        {CLEF_GLYPHS[clef].glyph}
+      </text>
+
+      {sorted.map((cell, i) => {
+        const x = startX + i * stepX + stepX / 2
+        const note = noteForPosition(clef, cell.position)
+        return (
+          <g key={cell.position}>
+            {ledgerPositions(cell.position).map((p) => (
+              <line
+                key={p}
+                x1={x - 15}
+                x2={x + 15}
+                y1={yFor(p)}
+                y2={yFor(p)}
+                stroke="currentColor"
+                strokeWidth={1.5}
+              />
+            ))}
+            <g transform={`translate(${x} ${yFor(cell.position)})`}>
+              <ellipse rx={9.5} ry={6.5} fill={heatColor(cell.accuracy)} transform="rotate(-14)" />
+              <ellipse rx={4.6} ry={3} fill="var(--staff-bg, #fff)" transform="rotate(-32)" />
+            </g>
+            <text
+              x={x}
+              y={HEIGHT - 6}
+              textAnchor="middle"
+              fontSize={13}
+              fontFamily="inherit"
+              fill="currentColor"
+            >
+              {note.letter}
+              {note.octave}
+            </text>
+          </g>
+        )
+      })}
     </svg>
   )
 }

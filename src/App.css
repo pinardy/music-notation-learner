@@ -388,6 +388,61 @@ button.primary {
   box-shadow: 0 4px 0 #5a3fd4;
 }
 
+/* --- Stats screen --- */
+
+.stats-link {
+  font-weight: 700;
+}
+
+.section-title {
+  font-size: 1.15rem;
+  margin: 0.5rem 0 -0.5rem;
+  color: #4b3a8f;
+}
+
+.clef-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.clef-tab {
+  padding: 0.3rem 1rem;
+  border-radius: 999px;
+  text-transform: capitalize;
+  font-size: 0.9rem;
+}
+
+.clef-tab.active {
+  border-color: var(--accent);
+  background: #efe9ff;
+  box-shadow: 0 4px 0 #c9b8ff;
+}
+
+.heat-card {
+  max-width: 460px;
+  overflow-x: auto;
+}
+
+.heat-legend {
+  margin: -0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.heat-legend .dot {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 50%;
+}
+
+.heat-legend .dot.green { background: #35c46f; }
+.heat-legend .dot.amber { background: #ffb347; }
+.heat-legend .dot.red { background: #ff6b81; }
+
 /* --- Landscape tablet layout: staff left, answers right --- */
 
 @media (orientation: landscape) and (min-width: 700px) and (min-height: 420px) {

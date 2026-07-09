@@ -75,6 +75,11 @@ function noteAt(clef: Clef, idx: number): Note {
   }
 }
 
+/** The note a staff position denotes in a given clef (for stats displays) */
+export function noteForPosition(clef: Clef, staffPosition: number): Note {
+  return noteAt(clef, BOTTOM_LINE[clef] + staffPosition)
+}
+
 // Key signatures. Glyph staff positions follow standard engraving order.
 // Bass/alto are the treble positions shifted down; tenor flats shift up, but
 // tenor sharps use the exceptional pattern that starts F♯ low to stay inside

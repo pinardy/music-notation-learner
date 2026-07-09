@@ -3,6 +3,8 @@ import { Staff } from './Staff'
 import { makeQuestion } from './notes'
 import type { ClefMode, GameType, Level, Question } from './notes'
 import { playNotes } from './audio'
+import { saveRound } from './history'
+import { Stats } from './Stats'
 import './App.css'
 
 const ROUND_LENGTH = 10
@@ -43,6 +45,7 @@ interface AnswerRecord {
   answer: string
   correct: boolean
   timeMs: number
+  position: number
 }
 
 interface BestResult {
@@ -50,7 +53,7 @@ interface BestResult {
   avgTimeMs: number
 }
 
-type Screen = 'start' | 'playing' | 'summary'
+type Screen = 'start' | 'playing' | 'summary' | 'stats'
 
 function bestKey(mode: ClefMode, level: Level, gameType: GameType, extended: boolean) {
   // Note-naming at standard range keeps the original keys so old bests survive
@@ -138,6 +141,19 @@ export default function App() {
   }
 
   function finishRound(finalAnswers: AnswerRecord[]) {
+    saveRound({
+      date: new Date().toISOString(),
+      gameType,
+      level,
+      mode,
+      extended,
+      answers: finalAnswers.map((a) => ({
+        position: a.position,
+        clef: a.clef,
+        correct: a.correct,
+        timeMs: a.timeMs,
+      })),
+    })
     const finalScore = finalAnswers.filter((a) => a.correct).length
     const avgTimeMs =
       finalAnswers.reduce((sum, a) => sum + a.timeMs, 0) / finalAnswers.length
@@ -178,6 +194,7 @@ export default function App() {
       answer: label,
       correct: label === question.answer,
       timeMs,
+      position: question.notes[0].staffPosition,
     }
     const nextAnswers = [...answers, record]
     setAnswers(nextAnswers)
@@ -192,6 +209,10 @@ export default function App() {
         questionStartRef.current = performance.now()
       }
     }, FEEDBACK_MS)
+  }
+
+  if (screen === 'stats') {
+    return <Stats onBack={() => setScreen('start')} />
   }
 
   if (screen === 'start') {
@@ -275,6 +296,10 @@ export default function App() {
           })}
         </div>
         </div>
+
+        <button className="stats-link" onClick={() => setScreen('stats')}>
+          📊 My Stats
+        </button>
       </main>
     )
   }
@@ -341,6 +366,7 @@ export default function App() {
             Play again 🎮
           </button>
           <button onClick={() => setScreen('start')}>Change mode</button>
+          <button onClick={() => setScreen('stats')}>📊 Stats</button>
         </div>
       </main>
     )

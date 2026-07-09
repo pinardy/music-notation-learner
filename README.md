@@ -20,6 +20,10 @@ Correct answers play the pitch(es), synthesized with the Web Audio API
 An **extended range** toggle widens every game from one ledger line to three
 ledger lines above and below the staff.
 
+A **stats screen** (📊 My Stats) aggregates your play history (stored locally,
+last 300 rounds): accuracy per game type, every practiced note drawn on a
+staff colored by accuracy, and a "practice these" list of your weakest notes.
+
 ## Modes
 
 - **Treble clef** — C4 to A5 (one ledger line above/below the staff)
