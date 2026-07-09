@@ -16,6 +16,9 @@ Correct answers play the pitch(es), synthesized with the Web Audio API
 - **Notes** — name the note on the staff (difficulty levels below)
 - **Intervals** — two stacked notes; name the distance (2nd through octave)
 - **Chords** — a root-position triad; name the root note
+- **Ear Training** — the app plays, you identify by ear, and the staff is
+  revealed after answering: higher-or-lower (easy), interval distance
+  (medium), or chord quality — major/minor/diminished natural triads (hard)
 
 An **extended range** toggle widens every game from one ledger line to three
 ledger lines above and below the staff.

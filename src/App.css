@@ -74,6 +74,35 @@ h1 {
   color: var(--muted);
 }
 
+.game-picker {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* --- Ear training --- */
+
+.ear-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 220px;
+}
+
+.ear-emoji {
+  font-size: 4rem;
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.replay {
+  font-weight: 700;
+}
+
 .toggle-row {
   display: flex;
   gap: 0.6rem;

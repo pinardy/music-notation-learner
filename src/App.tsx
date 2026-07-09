@@ -15,6 +15,7 @@ const GAMES: { id: GameType; label: string; blurb: string }[] = [
   { id: 'notes', label: '🎼 Notes', blurb: 'Name the note' },
   { id: 'intervals', label: '📏 Intervals', blurb: 'How far apart?' },
   { id: 'chords', label: '🎹 Chords', blurb: 'Name the root' },
+  { id: 'ear', label: '🎧 Ear Training', blurb: 'Listen & guess' },
 ]
 
 const LEVELS: { id: Level; label: string; blurb: string }[] = [
@@ -23,10 +24,23 @@ const LEVELS: { id: Level; label: string; blurb: string }[] = [
   { id: 'hard', label: '🚀 Hard', blurb: 'Key signatures (up to 7♯/7♭)' },
 ]
 
+const EAR_LEVELS: { id: Level; label: string; blurb: string }[] = [
+  { id: 'easy', label: '🐤 Higher or Lower', blurb: 'Which way did it go?' },
+  { id: 'medium', label: '👂 Intervals', blurb: 'How far apart?' },
+  { id: 'hard', label: '🎵 Chords', blurb: 'Major, minor…?' },
+]
+
 const PROMPTS: Record<GameType, string> = {
   notes: 'What note is this?',
   intervals: 'How far apart are the notes?',
   chords: 'Name the root (bottom) note!',
+  ear: 'Listen carefully…',
+}
+
+const EAR_PROMPTS: Record<Level, string> = {
+  easy: 'Was the second note higher or lower?',
+  medium: 'How far apart were the two notes?',
+  hard: 'What kind of chord was that?',
 }
 
 const PRAISE = ['Great job! 🎉', 'Awesome! ⭐', 'You rock! 🎸', 'Super! ✨', 'Wow! 🌈']
@@ -61,7 +75,8 @@ function bestKey(mode: ClefMode, level: Level, gameType: GameType, extended: boo
   if (gameType === 'notes' && !extended) {
     return level === 'easy' ? `note-game-best-${mode}` : `note-game-best-${level}-${mode}`
   }
-  const levelPart = gameType === 'notes' ? level : 'any'
+  // Levels distinguish notes and ear-training bests; intervals/chords have none
+  const levelPart = gameType === 'intervals' || gameType === 'chords' ? 'any' : level
   return `note-game-best-${gameType}-${levelPart}-${extended ? 'ext' : 'std'}-${mode}`
 }
 
@@ -139,6 +154,11 @@ export default function App() {
     </button>
   )
 
+  // Chord-ish sounds get a light roll; melodic ear questions a real gap
+  function playQuestion(q: Question) {
+    playNotes(q.midis, gameType === 'ear' && level !== 'hard' ? 0.55 : 0.12)
+  }
+
   function startRound(selectedMode: ClefMode) {
     setMode(selectedMode)
     setAnswers([])
@@ -147,15 +167,15 @@ export default function App() {
     // Weights are computed once per round from the play history
     weightRef.current =
       adaptive && gameType === 'notes' ? buildAdaptiveWeights() : undefined
-    setQuestion(
-      makeQuestion({
-        mode: selectedMode,
-        level,
-        gameType,
-        extended,
-        weight: weightRef.current,
-      }),
-    )
+    const first = makeQuestion({
+      mode: selectedMode,
+      level,
+      gameType,
+      extended,
+      weight: weightRef.current,
+    })
+    setQuestion(first)
+    if (gameType === 'ear') playQuestion(first)
     setScreen('playing')
     questionStartRef.current = performance.now()
   }
@@ -215,8 +235,9 @@ export default function App() {
     if (!question || selected !== null) return
     const timeMs = performance.now() - questionStartRef.current
     setSelected(label)
-    // Let the player hear what they just read (the correct pitches either way)
-    if (soundOn) playNotes(question.midis)
+    // Let the player hear what they just read (the correct pitches either way).
+    // Ear training always sounds — it's the whole game.
+    if (soundOn || gameType === 'ear') playQuestion(question)
 
     const record: AnswerRecord = {
       shown: question.display,
@@ -236,16 +257,16 @@ export default function App() {
       } else {
         setSelected(null)
         setQuestionNumber((n) => n + 1)
-        setQuestion(
-          makeQuestion({
-            mode,
-            level,
-            gameType,
-            extended,
-            previous: question,
-            weight: weightRef.current,
-          }),
-        )
+        const next = makeQuestion({
+          mode,
+          level,
+          gameType,
+          extended,
+          previous: question,
+          weight: weightRef.current,
+        })
+        setQuestion(next)
+        if (gameType === 'ear') playQuestion(next)
         questionStartRef.current = performance.now()
       }
     }, FEEDBACK_MS)
@@ -267,7 +288,7 @@ export default function App() {
 
         <div className="start-columns">
         <div className="setup">
-        <div className="level-picker" role="radiogroup" aria-label="Game">
+        <div className="level-picker game-picker" role="radiogroup" aria-label="Game">
           {GAMES.map((g) => (
             <button
               key={g.id}
@@ -282,9 +303,9 @@ export default function App() {
           ))}
         </div>
 
-        {gameType === 'notes' && (
+        {(gameType === 'notes' || gameType === 'ear') && (
           <div className="level-picker" role="radiogroup" aria-label="Difficulty">
-            {LEVELS.map((l) => (
+            {(gameType === 'ear' ? EAR_LEVELS : LEVELS).map((l) => (
               <button
                 key={l.id}
                 role="radio"
@@ -299,6 +320,7 @@ export default function App() {
           </div>
         )}
 
+        {gameType !== 'ear' && (
         <div className="toggle-row">
           <button
             className={`toggle-button${extended ? ' active' : ''}`}
@@ -325,30 +347,47 @@ export default function App() {
             </button>
           )}
         </div>
+        )}
         </div>
 
         <div className="mode-buttons">
-          {(
-            [
-              ['treble', '🐦 Treble Clef 𝄞'],
-              ['bass', '🐻 Bass Clef 𝄢'],
-              ['alto', '🦊 Alto Clef 𝄡'],
-              ['tenor', '🐸 Tenor Clef 𝄡'],
-              ['both', '🎲 All Clefs'],
-            ] as [ClefMode, string][]
-          ).map(([m, label]) => {
-            const b = loadBest(m, level, gameType, extended)
-            return (
-              <button key={m} className="mode-button" onClick={() => startRound(m)}>
-                <span className="mode-label">{label}</span>
-                <span className="mode-best">
-                  {b
-                    ? `Best: ${b.score}/${ROUND_LENGTH} · avg ${formatSeconds(b.avgTimeMs)}`
-                    : 'No games yet'}
-                </span>
-              </button>
-            )
-          })}
+          {gameType === 'ear' ? (
+            (() => {
+              const b = loadBest('both', level, 'ear', false)
+              return (
+                <button className="mode-button" onClick={() => startRound('both')}>
+                  <span className="mode-label">🎧 Start Listening!</span>
+                  <span className="mode-best">
+                    {b
+                      ? `Best: ${b.score}/${ROUND_LENGTH} · avg ${formatSeconds(b.avgTimeMs)}`
+                      : 'No games yet'}
+                  </span>
+                </button>
+              )
+            })()
+          ) : (
+            (
+              [
+                ['treble', '🐦 Treble Clef 𝄞'],
+                ['bass', '🐻 Bass Clef 𝄢'],
+                ['alto', '🦊 Alto Clef 𝄡'],
+                ['tenor', '🐸 Tenor Clef 𝄡'],
+                ['both', '🎲 All Clefs'],
+              ] as [ClefMode, string][]
+            ).map(([m, label]) => {
+              const b = loadBest(m, level, gameType, extended)
+              return (
+                <button key={m} className="mode-button" onClick={() => startRound(m)}>
+                  <span className="mode-label">{label}</span>
+                  <span className="mode-best">
+                    {b
+                      ? `Best: ${b.score}/${ROUND_LENGTH} · avg ${formatSeconds(b.avgTimeMs)}`
+                      : 'No games yet'}
+                  </span>
+                </button>
+              )
+            })
+          )}
         </div>
         </div>
 
@@ -442,9 +481,18 @@ export default function App() {
       {question && (
         <>
           <div className="staff-wrap">
-            <div className="staff-card">
-              <Staff notes={question.notes} keySignature={question.key} />
-            </div>
+            {gameType === 'ear' && selected === null ? (
+              <div className="staff-card ear-card">
+                <div className="ear-emoji">🎧</div>
+                <button className="replay" onClick={() => playQuestion(question)}>
+                  🔊 Hear it again
+                </button>
+              </div>
+            ) : (
+              <div className="staff-card">
+                <Staff notes={question.notes} keySignature={question.key} />
+              </div>
+            )}
             {selected === question.answer && (
               <div className="burst" key={questionNumber}>
                 {BURST_EMOJI.map((e, i) => (
@@ -454,10 +502,19 @@ export default function App() {
             )}
           </div>
           <p className="key-hint">
-            {question.key ? `Key: ${question.key.name}` : PROMPTS[gameType]}
+            {question.key
+              ? `Key: ${question.key.name}`
+              : gameType === 'ear'
+                ? EAR_PROMPTS[level]
+                : PROMPTS[gameType]}
           </p>
           <div
             className={`options${question.options.some((o) => o.length > 2) ? ' words' : ''}`}
+            style={
+              question.options.length < 4
+                ? { gridTemplateColumns: `repeat(${question.options.length}, 1fr)` }
+                : undefined
+            }
           >
             {question.options.map((label) => {
               let cls = 'option'

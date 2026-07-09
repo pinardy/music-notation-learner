@@ -9,6 +9,7 @@ const GAME_LABELS: Record<GameType, string> = {
   notes: '🎼 Notes',
   intervals: '📏 Intervals',
   chords: '🎹 Chords',
+  ear: '🎧 Ear Training',
 }
 
 function formatSeconds(ms: number): string {

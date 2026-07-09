@@ -36,7 +36,10 @@ export function playNote(midi: number, durationS = 1.1, delayS = 0) {
   }
 }
 
-/** Play several pitches together, lightly staggered so each is audible */
-export function playNotes(midis: number[]) {
-  midis.forEach((midi, i) => playNote(midi, 1.1 + i * 0.1, i * 0.12))
+/**
+ * Play several pitches. The default small stagger reads as a chord with each
+ * note audible; a larger stagger (e.g. 0.55s) plays them melodically.
+ */
+export function playNotes(midis: number[], staggerS = 0.12) {
+  midis.forEach((midi, i) => playNote(midi, 1.1 + i * 0.1, i * staggerS))
 }

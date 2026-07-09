@@ -3,7 +3,7 @@ export const CLEFS: Clef[] = ['treble', 'bass', 'alto', 'tenor']
 /** 'both' is the historical id for "random clef" (kept for stored best scores) */
 export type ClefMode = Clef | 'both'
 export type Level = 'easy' | 'medium' | 'hard'
-export type GameType = 'notes' | 'intervals' | 'chords'
+export type GameType = 'notes' | 'intervals' | 'chords' | 'ear'
 export type Accidental = 'sharp' | 'flat'
 
 export type NoteLetter = 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B'
@@ -324,16 +324,84 @@ function makeChordQuestion(clef: Clef, extended: boolean): Question {
   }
 }
 
+// Natural (no-accidental) triad qualities are fixed by the root letter, so the
+// ear-training chord level can play real qualities AND reveal a clean staff
+const TRIAD_ROOTS: Record<string, NoteLetter[]> = {
+  Major: ['C', 'F', 'G'],
+  Minor: ['D', 'E', 'A'],
+  Diminished: ['B'],
+}
+export const TRIAD_QUALITIES = Object.keys(TRIAD_ROOTS)
+
+function noteName(n: Note): string {
+  return `${noteLabel(n.letter, n.accidental)}${n.octave}`
+}
+
+function makeEarQuestion(clef: Clef, level: Level): Question {
+  const [low, high] = rangeOf(clef, false)
+
+  if (level === 'easy') {
+    // Two notes at least a third apart — which way did the second one go?
+    const first = randInt(low, high)
+    let second = randInt(low, high)
+    while (Math.abs(second - first) < 2) second = randInt(low, high)
+    const notes = [noteAt(clef, first), noteAt(clef, second)]
+    const answer = second > first ? 'Higher ⬆️' : 'Lower ⬇️'
+    return {
+      clef,
+      notes,
+      answer,
+      display: `${answer} (${noteName(notes[0])} → ${noteName(notes[1])})`,
+      options: ['Higher ⬆️', 'Lower ⬇️'],
+      midis: notes.map((n) => midiOf(n.letter, n.octave)),
+    }
+  }
+
+  if (level === 'medium') {
+    // Ascending melodic interval — same answers as the reading game
+    const q = makeIntervalQuestion(clef, false)
+    return {
+      ...q,
+      display: `${q.answer} (${noteName(q.notes[0])} → ${noteName(q.notes[1])})`,
+    }
+  }
+
+  // hard: chord quality from a natural triad
+  const quality = pick(TRIAD_QUALITIES)
+  const rootChoices: number[] = []
+  for (let idx = low; idx <= high - 4; idx++) {
+    if (TRIAD_ROOTS[quality].includes(LETTERS[idx % 7])) rootChoices.push(idx)
+  }
+  const rootIdx = pick(rootChoices)
+  const notes = [0, 2, 4].map((s) => noteAt(clef, rootIdx + s))
+  return {
+    clef,
+    notes,
+    answer: quality,
+    display: `${quality} (${notes[0].letter} triad)`,
+    options: [...TRIAD_QUALITIES],
+    midis: notes.map((n) => midiOf(n.letter, n.octave)),
+  }
+}
+
 export function makeQuestion(opts: QuestionOpts): Question {
   const { mode, level, gameType, extended, previous, weight } = opts
   for (let attempt = 0; ; attempt++) {
-    const clef: Clef = mode === 'both' ? pick(CLEFS) : mode
+    // Ear training reveals on treble/bass only — the clefs beginners read
+    const clef: Clef =
+      gameType === 'ear'
+        ? pick(['treble', 'bass'])
+        : mode === 'both'
+          ? pick(CLEFS)
+          : mode
     const q =
       gameType === 'intervals'
         ? makeIntervalQuestion(clef, extended)
         : gameType === 'chords'
           ? makeChordQuestion(clef, extended)
-          : makeNotesQuestion(clef, level, extended, weight)
+          : gameType === 'ear'
+            ? makeEarQuestion(clef, level)
+            : makeNotesQuestion(clef, level, extended, weight)
     // Avoid repeating the previous question exactly (give up after a few tries
     // in case the pool is somehow tiny)
     const samePlace =
