@@ -121,6 +121,52 @@ const CLEF_GLYPHS: Record<
   },
 }
 
+/**
+ * Exact vertical fit for the C clef (alto/tenor). A C clef is by definition
+ * exactly staff-height, vertically symmetric about its anchor line — but the
+ * glyph comes from whatever system font the browser falls back to, so the
+ * hand-tuned constants can be off by a few pixels per platform. Canvas
+ * measureText exposes the glyph's real ink extents, from which we derive the
+ * font size and baseline that make the ink span anchor ± 2 staff lines.
+ */
+function useCClefFit(
+  clef: Clef,
+  ref: React.RefObject<SVGTextElement | null>,
+): { fontSize: number; y: number } | null {
+  const [fit, setFit] = useState<{ fontSize: number; y: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (clef !== 'alto' && clef !== 'tenor') {
+      setFit(null)
+      return
+    }
+    const el = ref.current
+    if (!el) return
+    try {
+      const spec = CLEF_GLYPHS[clef]
+      const ctx = document.createElement('canvas').getContext('2d')
+      if (!ctx) return
+      ctx.font = `${spec.fontSize}px ${getComputedStyle(el).fontFamily}`
+      const m = ctx.measureText(spec.glyph)
+      const inkHeight = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent
+      if (!inkHeight || !Number.isFinite(inkHeight)) return
+      const scale = (4 * LINE_GAP) / inkHeight
+      const anchorY = yFor(spec.position)
+      setFit({
+        fontSize: spec.fontSize * scale,
+        // Baseline so the ink's vertical center lands on the anchor line
+        y:
+          anchorY +
+          ((m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) * scale) / 2,
+      })
+    } catch {
+      // Older browsers without ink metrics keep the hand-tuned constants
+    }
+  }, [clef, ref])
+
+  return fit
+}
+
 interface StaffProps {
   /** Notes to draw at the note column, bottom first */
   notes: Note[]
@@ -131,12 +177,14 @@ export function Staff({ notes, keySignature }: StaffProps) {
   const clef = notes[0].clef
   const clefRef = useRef<SVGTextElement>(null)
   const [keySigX, setKeySigX] = useState(KEY_SIG_X_FALLBACK)
+  const cClefFit = useCClefFit(clef, clefRef)
 
   // Start the key signature just right of the clef's actual rendered edge
+  // (re-measured after the C-clef fit adjusts the glyph size)
   useLayoutEffect(() => {
     const bbox = clefRef.current?.getBBox()
     if (bbox && bbox.width > 0) setKeySigX(bbox.x + bbox.width + KEY_SIG_GAP)
-  }, [clef])
+  }, [clef, cClefFit])
 
   // Stacked seconds collide, so the upper note shifts right (standard notation)
   const sorted = [...notes].sort((a, b) => a.staffPosition - b.staffPosition)
@@ -174,8 +222,8 @@ export function Staff({ notes, keySignature }: StaffProps) {
       <text
         ref={clefRef}
         x={CLEF_GLYPHS[clef].x}
-        y={yFor(CLEF_GLYPHS[clef].position) + CLEF_GLYPHS[clef].baseline}
-        fontSize={CLEF_GLYPHS[clef].fontSize}
+        y={cClefFit?.y ?? yFor(CLEF_GLYPHS[clef].position) + CLEF_GLYPHS[clef].baseline}
+        fontSize={cClefFit?.fontSize ?? CLEF_GLYPHS[clef].fontSize}
         fill="currentColor"
       >
         {CLEF_GLYPHS[clef].glyph}
@@ -248,6 +296,8 @@ function heatColor(accuracy: number): string {
  * colored by the player's accuracy on that position.
  */
 export function HeatStaff({ clef, cells }: { clef: Clef; cells: HeatCell[] }) {
+  const clefRef = useRef<SVGTextElement>(null)
+  const cClefFit = useCClefFit(clef, clefRef)
   const sorted = [...cells].sort((a, b) => a.position - b.position)
   const startX = 78
   const stepX = 30
@@ -273,9 +323,10 @@ export function HeatStaff({ clef, cells }: { clef: Clef; cells: HeatCell[] }) {
       ))}
 
       <text
+        ref={clefRef}
         x={CLEF_GLYPHS[clef].x}
-        y={yFor(CLEF_GLYPHS[clef].position) + CLEF_GLYPHS[clef].baseline}
-        fontSize={CLEF_GLYPHS[clef].fontSize}
+        y={cClefFit?.y ?? yFor(CLEF_GLYPHS[clef].position) + CLEF_GLYPHS[clef].baseline}
+        fontSize={cClefFit?.fontSize ?? CLEF_GLYPHS[clef].fontSize}
         fill="currentColor"
       >
         {CLEF_GLYPHS[clef].glyph}
