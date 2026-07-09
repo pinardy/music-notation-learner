@@ -3,6 +3,7 @@ export const CLEFS: Clef[] = ['treble', 'bass', 'alto', 'tenor']
 /** 'both' is the historical id for "random clef" (kept for stored best scores) */
 export type ClefMode = Clef | 'both'
 export type Level = 'easy' | 'medium' | 'hard'
+export type GameType = 'notes' | 'intervals' | 'chords'
 export type Accidental = 'sharp' | 'flat'
 
 export type NoteLetter = 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B'
@@ -46,39 +47,38 @@ const BOTTOM_LINE: Record<Clef, number> = {
   tenor: diatonicIndex('D', 3),
 }
 
-// Playable ranges (one ledger line above and below the staff)
+// Standard playable range: one ledger line above and below the staff.
+// Extended range: three ledger lines each way.
 const RANGES: Record<Clef, [low: [NoteLetter, number], high: [NoteLetter, number]]> = {
   treble: [['C', 4], ['A', 5]],
   bass: [['E', 2], ['C', 4]],
   alto: [['D', 3], ['B', 4]],
   tenor: [['B', 2], ['G', 4]],
 }
+const EXTENDED_STEPS = 4 // two extra ledger lines beyond standard, each way
 
-function buildNotes(clef: Clef): Note[] {
+function rangeOf(clef: Clef, extended: boolean): [number, number] {
   const [[lowLetter, lowOctave], [highLetter, highOctave]] = RANGES[clef]
-  const lowIdx = diatonicIndex(lowLetter, lowOctave)
-  const highIdx = diatonicIndex(highLetter, highOctave)
-  const notes: Note[] = []
-  for (let idx = lowIdx; idx <= highIdx; idx++) {
-    notes.push({
-      letter: LETTERS[idx % 7],
-      octave: Math.floor(idx / 7),
-      staffPosition: idx - BOTTOM_LINE[clef],
-      clef,
-    })
-  }
-  return notes
+  const pad = extended ? EXTENDED_STEPS : 0
+  return [
+    diatonicIndex(lowLetter, lowOctave) - pad,
+    diatonicIndex(highLetter, highOctave) + pad,
+  ]
 }
 
-const NOTE_POOL = Object.fromEntries(CLEFS.map((c) => [c, buildNotes(c)])) as Record<
-  Clef,
-  Note[]
->
+function noteAt(clef: Clef, idx: number): Note {
+  return {
+    letter: LETTERS[idx % 7],
+    octave: Math.floor(idx / 7),
+    staffPosition: idx - BOTTOM_LINE[clef],
+    clef,
+  }
+}
 
-// Key signatures up to four accidentals. Glyph staff positions follow standard
-// engraving order. Bass/alto are the treble positions shifted down; tenor flats
-// shift up, but tenor sharps use the exceptional pattern that starts F♯ low to
-// stay inside the staff.
+// Key signatures. Glyph staff positions follow standard engraving order.
+// Bass/alto are the treble positions shifted down; tenor flats shift up, but
+// tenor sharps use the exceptional pattern that starts F♯ low to stay inside
+// the staff.
 const SHARP_ORDER: NoteLetter[] = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
 const FLAT_ORDER: NoteLetter[] = ['B', 'E', 'A', 'D', 'G', 'C', 'F']
 
@@ -114,13 +114,21 @@ export const KEYS: KeySignature[] = [
   makeKey('D major', 'sharp', 2),
   makeKey('A major', 'sharp', 3),
   makeKey('E major', 'sharp', 4),
+  makeKey('B major', 'sharp', 5),
+  makeKey('F♯ major', 'sharp', 6),
+  makeKey('C♯ major', 'sharp', 7),
   makeKey('F major', 'flat', 1),
   makeKey('B♭ major', 'flat', 2),
   makeKey('E♭ major', 'flat', 3),
   makeKey('A♭ major', 'flat', 4),
+  makeKey('D♭ major', 'flat', 5),
+  makeKey('G♭ major', 'flat', 6),
+  makeKey('C♭ major', 'flat', 7),
 ]
 
-// Skip enharmonic oddities (B♯, E♯, C♭, F♭) — confusing for learners
+// Skip enharmonic oddities (B♯, E♯, C♭, F♭) when drawing accidentals on single
+// notes — confusing for learners. They can still be correct answers in hard
+// mode under 6-7 accidental key signatures, where they are musically real.
 const ALLOWED: Record<Accidental, NoteLetter[]> = {
   sharp: ['C', 'D', 'F', 'G', 'A'],
   flat: ['D', 'E', 'G', 'A', 'B'],
@@ -137,14 +145,20 @@ const ALL_LABELS: string[] = LETTERS.flatMap((letter) => [
     .map((acc) => noteLabel(letter, acc)),
 ])
 
+export const INTERVAL_NAMES = ['2nd', '3rd', '4th', '5th', '6th', '7th', 'Octave']
+
 export interface Question {
-  note: Note
+  clef: Clef
+  /** The note(s) drawn on the staff, bottom first */
+  notes: Note[]
   key?: KeySignature
-  /** The correct label, e.g. "F♯" */
+  /** The correct option label, e.g. "F♯", "5th" */
   answer: string
+  /** Display string for feedback/summary, e.g. "F♯4", "5th", "C triad" */
+  display: string
   options: string[]
-  /** MIDI number of the effective pitch, for audio playback */
-  midi: number
+  /** MIDI numbers of the effective pitches, for audio playback */
+  midis: number[]
 }
 
 const SEMITONES: Record<NoteLetter, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
@@ -156,6 +170,10 @@ function midiOf(letter: NoteLetter, octave: number, accidental?: Accidental): nu
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function randInt(low: number, high: number): number {
+  return low + Math.floor(Math.random() * (high - low + 1))
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -175,7 +193,7 @@ function pickAccidental(letter: NoteLetter): Accidental | undefined {
 }
 
 /** Three wrong labels: one sharing the letter, one sharing the accidental, one random */
-function distractors(answer: string, letter: NoteLetter, level: Level): string[] {
+function noteDistractors(answer: string, letter: NoteLetter, level: Level): string[] {
   if (level === 'easy') {
     return shuffle(LETTERS.filter((l) => l !== letter)).slice(0, 3)
   }
@@ -195,21 +213,17 @@ function distractors(answer: string, letter: NoteLetter, level: Level): string[]
   return chosen
 }
 
-export function makeQuestion(mode: ClefMode, level: Level, previous?: Note): Question {
-  const clef: Clef = mode === 'both' ? pick(CLEFS) : mode
+export interface QuestionOpts {
+  mode: ClefMode
+  level: Level
+  gameType: GameType
+  extended: boolean
+  previous?: Question
+}
 
-  let base = pick(NOTE_POOL[clef])
-  // Avoid showing the exact same staff position twice in a row
-  while (
-    previous &&
-    base.letter === previous.letter &&
-    base.octave === previous.octave &&
-    base.clef === previous.clef
-  ) {
-    base = pick(NOTE_POOL[clef])
-  }
-
-  let note: Note = { ...base }
+function makeNotesQuestion(clef: Clef, level: Level, extended: boolean): Question {
+  const [low, high] = rangeOf(clef, extended)
+  const note = noteAt(clef, randInt(low, high))
   let key: KeySignature | undefined
   if (level === 'medium') {
     note.accidental = pickAccidental(note.letter)
@@ -220,8 +234,81 @@ export function makeQuestion(mode: ClefMode, level: Level, previous?: Note): Que
   const effectiveAccidental =
     level === 'hard' && key!.letters.includes(note.letter) ? key!.accidental : note.accidental
   const answer = noteLabel(note.letter, effectiveAccidental)
+  const options = shuffle([answer, ...noteDistractors(answer, note.letter, level)])
+  return {
+    clef,
+    notes: [note],
+    key,
+    answer,
+    display: `${answer}${note.octave}`,
+    options,
+    midis: [midiOf(note.letter, note.octave, effectiveAccidental)],
+  }
+}
 
-  const options = shuffle([answer, ...distractors(answer, note.letter, level)])
-  const midi = midiOf(note.letter, note.octave, effectiveAccidental)
-  return { note, key, answer, options, midi }
+function makeIntervalQuestion(clef: Clef, extended: boolean): Question {
+  const [low, high] = rangeOf(clef, extended)
+  const steps = randInt(1, 7) // 2nd .. octave
+  const bottomIdx = randInt(low, high - steps)
+  const notes = [noteAt(clef, bottomIdx), noteAt(clef, bottomIdx + steps)]
+  const answer = INTERVAL_NAMES[steps - 1]
+  // Two nearest interval names plus one random other — plausible confusions
+  const others = INTERVAL_NAMES.filter((n) => n !== answer)
+  const nearest = others
+    .slice()
+    .sort(
+      (a, b) =>
+        Math.abs(INTERVAL_NAMES.indexOf(a) - (steps - 1)) -
+        Math.abs(INTERVAL_NAMES.indexOf(b) - (steps - 1)),
+    )
+    .slice(0, 2)
+  const rest = shuffle(others.filter((n) => !nearest.includes(n)))[0]
+  return {
+    clef,
+    notes,
+    answer,
+    display: answer,
+    options: shuffle([answer, ...nearest, rest]),
+    midis: notes.map((n) => midiOf(n.letter, n.octave)),
+  }
+}
+
+function makeChordQuestion(clef: Clef, extended: boolean): Question {
+  const [low, high] = rangeOf(clef, extended)
+  const rootIdx = randInt(low, high - 4)
+  const notes = [0, 2, 4].map((s) => noteAt(clef, rootIdx + s))
+  const answer = notes[0].letter
+  const options = shuffle([
+    answer,
+    ...shuffle(LETTERS.filter((l) => l !== answer)).slice(0, 3),
+  ])
+  return {
+    clef,
+    notes,
+    answer,
+    display: `${answer} triad`,
+    options,
+    midis: notes.map((n) => midiOf(n.letter, n.octave)),
+  }
+}
+
+export function makeQuestion(opts: QuestionOpts): Question {
+  const { mode, level, gameType, extended, previous } = opts
+  for (let attempt = 0; ; attempt++) {
+    const clef: Clef = mode === 'both' ? pick(CLEFS) : mode
+    const q =
+      gameType === 'intervals'
+        ? makeIntervalQuestion(clef, extended)
+        : gameType === 'chords'
+          ? makeChordQuestion(clef, extended)
+          : makeNotesQuestion(clef, level, extended)
+    // Avoid repeating the previous question exactly (give up after a few tries
+    // in case the pool is somehow tiny)
+    const samePlace =
+      previous &&
+      q.clef === previous.clef &&
+      q.notes[0].staffPosition === previous.notes[0].staffPosition &&
+      q.display === previous.display
+    if (!samePlace || attempt >= 8) return q
+  }
 }

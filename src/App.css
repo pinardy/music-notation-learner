@@ -67,6 +67,20 @@ h1 {
   color: var(--muted);
 }
 
+.toggle-button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 1.2rem;
+  font-weight: 700;
+}
+
+.toggle-button.active {
+  border-color: var(--candy-amber);
+  background: #fff4e0;
+  box-shadow: 0 4px 0 #f3cd8b;
+}
+
 .mode-buttons {
   display: flex;
   flex-direction: column;
@@ -214,6 +228,12 @@ h1 {
   padding: 0.7rem 0;
   color: #fff;
   border-width: 0;
+}
+
+/* Word answers (intervals) need smaller type to fit four columns */
+.options.words .option {
+  font-size: 1.05rem;
+  padding: 1rem 0.1rem;
 }
 
 .options .option:nth-child(1) { background: var(--candy-red); box-shadow: 0 5px 0 #d9485f; }

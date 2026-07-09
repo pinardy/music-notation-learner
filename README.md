@@ -5,11 +5,20 @@ A game for learning to read music notation, built with React + TypeScript + Vite
 <img src="https://pinardy.github.io/music-notation-learner/screenshot.png" width="480" alt="A treble clef staff showing a whole note, with four colorful answer buttons below">
 
 A note is shown on a staff and you pick its name from four options. Each round
-is 10 notes; your score and per-note response time are recorded, and your best
-result per mode is saved in the browser (localStorage).
+is 10 questions; your score and per-question response time are recorded, and
+your best result per mode is saved in the browser (localStorage).
 
-Correct answers play the note's pitch, synthesized with the Web Audio API
+Correct answers play the pitch(es), synthesized with the Web Audio API
 (toggle with the 🔊 button).
+
+## Games
+
+- **Notes** — name the note on the staff (difficulty levels below)
+- **Intervals** — two stacked notes; name the distance (2nd through octave)
+- **Chords** — a root-position triad; name the root note
+
+An **extended range** toggle widens every game from one ledger line to three
+ledger lines above and below the staff.
 
 ## Modes
 
@@ -25,9 +34,9 @@ Correct answers play the note's pitch, synthesized with the Web Audio API
 - **Easy** — natural notes only
 - **Medium** — notes may carry a ♯ or ♭ accidental; answers include the
   accidental (enharmonic oddities like B♯/C♭ are excluded)
-- **Hard** — a key signature (up to 4 sharps or flats, G/D/A/E and
-  F/B♭/E♭/A♭ major) is drawn on the staff; name the effective pitch of the
-  plain note, e.g. an F in D major is F♯
+- **Hard** — a key signature (up to 7 sharps or flats, all major keys from
+  C♭ to C♯) is drawn on the staff; name the effective pitch of the plain
+  note, e.g. an F in D major is F♯
 
 ## Development
 

@@ -1,18 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { Staff } from './Staff'
 import { makeQuestion } from './notes'
-import type { ClefMode, Level, Question } from './notes'
-import { playNote } from './audio'
+import type { ClefMode, GameType, Level, Question } from './notes'
+import { playNotes } from './audio'
 import './App.css'
 
 const ROUND_LENGTH = 10
 const FEEDBACK_MS = 900
 
+const GAMES: { id: GameType; label: string; blurb: string }[] = [
+  { id: 'notes', label: '🎼 Notes', blurb: 'Name the note' },
+  { id: 'intervals', label: '📏 Intervals', blurb: 'How far apart?' },
+  { id: 'chords', label: '🎹 Chords', blurb: 'Name the root' },
+]
+
 const LEVELS: { id: Level; label: string; blurb: string }[] = [
   { id: 'easy', label: '🌱 Easy', blurb: 'Natural notes only' },
   { id: 'medium', label: '🌟 Medium', blurb: 'Sharps & flats on the note' },
-  { id: 'hard', label: '🚀 Hard', blurb: 'Key signatures' },
+  { id: 'hard', label: '🚀 Hard', blurb: 'Key signatures (up to 7♯/7♭)' },
 ]
+
+const PROMPTS: Record<GameType, string> = {
+  notes: 'What note is this?',
+  intervals: 'How far apart are the notes?',
+  chords: 'Name the root (bottom) note!',
+}
 
 const PRAISE = ['Great job! 🎉', 'Awesome! ⭐', 'You rock! 🎸', 'Super! ✨', 'Wow! 🌈']
 const BURST_EMOJI = ['🎉', '⭐', '🎵', '✨', '🎈', '🌟']
@@ -25,7 +37,7 @@ function starsFor(score: number): { stars: string; message: string } {
 }
 
 interface AnswerRecord {
-  note: string
+  shown: string
   clef: string
   key?: string
   answer: string
@@ -40,14 +52,23 @@ interface BestResult {
 
 type Screen = 'start' | 'playing' | 'summary'
 
-function bestKey(mode: ClefMode, level: Level) {
-  // Easy keeps the original key so pre-levels best scores survive
-  return level === 'easy' ? `note-game-best-${mode}` : `note-game-best-${level}-${mode}`
+function bestKey(mode: ClefMode, level: Level, gameType: GameType, extended: boolean) {
+  // Note-naming at standard range keeps the original keys so old bests survive
+  if (gameType === 'notes' && !extended) {
+    return level === 'easy' ? `note-game-best-${mode}` : `note-game-best-${level}-${mode}`
+  }
+  const levelPart = gameType === 'notes' ? level : 'any'
+  return `note-game-best-${gameType}-${levelPart}-${extended ? 'ext' : 'std'}-${mode}`
 }
 
-function loadBest(mode: ClefMode, level: Level): BestResult | null {
+function loadBest(
+  mode: ClefMode,
+  level: Level,
+  gameType: GameType,
+  extended: boolean,
+): BestResult | null {
   try {
-    const raw = localStorage.getItem(bestKey(mode, level))
+    const raw = localStorage.getItem(bestKey(mode, level, gameType, extended))
     return raw ? (JSON.parse(raw) as BestResult) : null
   } catch {
     return null
@@ -62,6 +83,8 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('start')
   const [mode, setMode] = useState<ClefMode>('treble')
   const [level, setLevel] = useState<Level>('easy')
+  const [gameType, setGameType] = useState<GameType>('notes')
+  const [extended, setExtended] = useState(false)
   const [question, setQuestion] = useState<Question | null>(null)
   const [questionNumber, setQuestionNumber] = useState(0)
   const [answers, setAnswers] = useState<AnswerRecord[]>([])
@@ -109,7 +132,7 @@ export default function App() {
     setAnswers([])
     setSelected(null)
     setQuestionNumber(1)
-    setQuestion(makeQuestion(selectedMode, level))
+    setQuestion(makeQuestion({ mode: selectedMode, level, gameType, extended }))
     setScreen('playing')
     questionStartRef.current = performance.now()
   }
@@ -119,7 +142,7 @@ export default function App() {
     const avgTimeMs =
       finalAnswers.reduce((sum, a) => sum + a.timeMs, 0) / finalAnswers.length
 
-    const previous = loadBest(mode, level)
+    const previous = loadBest(mode, level, gameType, extended)
     const isBetter =
       !previous ||
       finalScore > previous.score ||
@@ -127,7 +150,10 @@ export default function App() {
     if (isBetter) {
       const result = { score: finalScore, avgTimeMs }
       try {
-        localStorage.setItem(bestKey(mode, level), JSON.stringify(result))
+        localStorage.setItem(
+          bestKey(mode, level, gameType, extended),
+          JSON.stringify(result),
+        )
       } catch {
         // localStorage unavailable — best score just won't persist
       }
@@ -142,12 +168,12 @@ export default function App() {
     if (!question || selected !== null) return
     const timeMs = performance.now() - questionStartRef.current
     setSelected(label)
-    // Let the player hear the note they just read (the correct pitch either way)
-    if (soundOn) playNote(question.midi)
+    // Let the player hear what they just read (the correct pitches either way)
+    if (soundOn) playNotes(question.midis)
 
     const record: AnswerRecord = {
-      note: `${question.answer}${question.note.octave}`,
-      clef: question.note.clef,
+      shown: question.display,
+      clef: question.clef,
       key: question.key?.name,
       answer: label,
       correct: label === question.answer,
@@ -162,7 +188,7 @@ export default function App() {
       } else {
         setSelected(null)
         setQuestionNumber((n) => n + 1)
-        setQuestion(makeQuestion(mode, level, question.note))
+        setQuestion(makeQuestion({ mode, level, gameType, extended, previous: question }))
         questionStartRef.current = performance.now()
       }
     }, FEEDBACK_MS)
@@ -178,20 +204,49 @@ export default function App() {
           score big!
         </p>
 
-        <div className="level-picker" role="radiogroup" aria-label="Difficulty">
-          {LEVELS.map((l) => (
+        <div className="level-picker" role="radiogroup" aria-label="Game">
+          {GAMES.map((g) => (
             <button
-              key={l.id}
+              key={g.id}
               role="radio"
-              aria-checked={level === l.id}
-              className={`level-button${level === l.id ? ' active' : ''}`}
-              onClick={() => setLevel(l.id)}
+              aria-checked={gameType === g.id}
+              className={`level-button${gameType === g.id ? ' active' : ''}`}
+              onClick={() => setGameType(g.id)}
             >
-              <span className="level-label">{l.label}</span>
-              <span className="level-blurb">{l.blurb}</span>
+              <span className="level-label">{g.label}</span>
+              <span className="level-blurb">{g.blurb}</span>
             </button>
           ))}
         </div>
+
+        {gameType === 'notes' && (
+          <div className="level-picker" role="radiogroup" aria-label="Difficulty">
+            {LEVELS.map((l) => (
+              <button
+                key={l.id}
+                role="radio"
+                aria-checked={level === l.id}
+                className={`level-button${level === l.id ? ' active' : ''}`}
+                onClick={() => setLevel(l.id)}
+              >
+                <span className="level-label">{l.label}</span>
+                <span className="level-blurb">{l.blurb}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <button
+          className={`toggle-button${extended ? ' active' : ''}`}
+          role="switch"
+          aria-checked={extended}
+          onClick={() => setExtended((e) => !e)}
+        >
+          🪜 Extended range {extended ? 'ON' : 'OFF'}
+          <span className="level-blurb">
+            {extended ? 'Up to 3 ledger lines' : '1 ledger line'}
+          </span>
+        </button>
 
         <div className="mode-buttons">
           {(
@@ -203,7 +258,7 @@ export default function App() {
               ['both', '🎲 All Clefs'],
             ] as [ClefMode, string][]
           ).map(([m, label]) => {
-            const b = loadBest(m, level)
+            const b = loadBest(m, level, gameType, extended)
             return (
               <button key={m} className="mode-button" onClick={() => startRound(m)}>
                 <span className="mode-label">{label}</span>
@@ -255,7 +310,7 @@ export default function App() {
           <thead>
             <tr>
               <th>#</th>
-              <th>Note</th>
+              <th>Question</th>
               <th>Clef</th>
               {hasKeys && <th>Key</th>}
               <th>Your answer</th>
@@ -266,7 +321,7 @@ export default function App() {
             {answers.map((a, i) => (
               <tr key={i} className={a.correct ? 'row-correct' : 'row-wrong'}>
                 <td>{i + 1}</td>
-                <td>{a.note}</td>
+                <td>{a.shown}</td>
                 <td>{a.clef}</td>
                 {hasKeys && <td>{a.key}</td>}
                 <td className="answer-cell">
@@ -303,7 +358,7 @@ export default function App() {
         <>
           <div className="staff-wrap">
             <div className="staff-card">
-              <Staff note={question.note} keySignature={question.key} />
+              <Staff notes={question.notes} keySignature={question.key} />
             </div>
             {selected === question.answer && (
               <div className="burst" key={questionNumber}>
@@ -313,8 +368,12 @@ export default function App() {
               </div>
             )}
           </div>
-          {question.key && <p className="key-hint">Key: {question.key.name}</p>}
-          <div className="options">
+          <p className="key-hint">
+            {question.key ? `Key: ${question.key.name}` : PROMPTS[gameType]}
+          </p>
+          <div
+            className={`options${question.options.some((o) => o.length > 2) ? ' words' : ''}`}
+          >
             {question.options.map((label) => {
               let cls = 'option'
               if (selected !== null) {
@@ -338,8 +397,8 @@ export default function App() {
             {selected === null
               ? ' '
               : selected === question.answer
-                ? `${PRAISE[answers.length % PRAISE.length]} ${question.answer}${question.note.octave} — ${formatSeconds(answers[answers.length - 1]?.timeMs ?? 0)}`
-                : `Almost! It was ${question.answer}${question.note.octave}${question.key ? ` (${question.key.name})` : ''} 💪`}
+                ? `${PRAISE[answers.length % PRAISE.length]} ${question.display} — ${formatSeconds(answers[answers.length - 1]?.timeMs ?? 0)}`
+                : `Almost! It was ${question.display}${question.key ? ` (${question.key.name})` : ''} 💪`}
           </p>
         </>
       )}

@@ -4,13 +4,13 @@
 
 let ctx: AudioContext | null = null
 
-export function playNote(midi: number, durationS = 1.1) {
+export function playNote(midi: number, durationS = 1.1, delayS = 0) {
   try {
     ctx ??= new AudioContext()
     if (ctx.state === 'suspended') void ctx.resume()
 
     const freq = 440 * 2 ** ((midi - 69) / 12)
-    const t = ctx.currentTime
+    const t = ctx.currentTime + delayS
     const gain = ctx.createGain()
     gain.gain.setValueAtTime(0, t)
     gain.gain.linearRampToValueAtTime(0.25, t + 0.02)
@@ -34,4 +34,9 @@ export function playNote(midi: number, durationS = 1.1) {
   } catch {
     // Audio unavailable (unsupported browser) — the game works fine silently
   }
+}
+
+/** Play several pitches together, lightly staggered so each is audible */
+export function playNotes(midis: number[]) {
+  midis.forEach((midi, i) => playNote(midi, 1.1 + i * 0.1, i * 0.12))
 }

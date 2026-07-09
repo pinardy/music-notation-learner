@@ -121,12 +121,13 @@ const CLEF_GLYPHS: Record<
 }
 
 interface StaffProps {
-  note: Note
+  /** Notes to draw at the note column, bottom first */
+  notes: Note[]
   keySignature?: KeySignature
 }
 
-export function Staff({ note, keySignature }: StaffProps) {
-  const noteY = yFor(note.staffPosition)
+export function Staff({ notes, keySignature }: StaffProps) {
+  const clef = notes[0].clef
   const clefRef = useRef<SVGTextElement>(null)
   const [keySigX, setKeySigX] = useState(KEY_SIG_X_FALLBACK)
 
@@ -134,14 +135,25 @@ export function Staff({ note, keySignature }: StaffProps) {
   useLayoutEffect(() => {
     const bbox = clefRef.current?.getBBox()
     if (bbox && bbox.width > 0) setKeySigX(bbox.x + bbox.width + KEY_SIG_GAP)
-  }, [note.clef])
+  }, [clef])
+
+  // Stacked seconds collide, so the upper note shifts right (standard notation)
+  const sorted = [...notes].sort((a, b) => a.staffPosition - b.staffPosition)
+  const xOf = (i: number) =>
+    i > 0 && sorted[i].staffPosition - sorted[i - 1].staffPosition === 1
+      ? NOTE_X + 17
+      : NOTE_X
+  const anyOffset = sorted.some((_, i) => xOf(i) !== NOTE_X)
+
+  // Merge the ledger lines every drawn note needs
+  const ledgers = [...new Set(sorted.flatMap((n) => ledgerPositions(n.staffPosition)))]
 
   return (
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       className="staff"
       role="img"
-      aria-label={`A note on the ${note.clef} clef staff`}
+      aria-label={`${notes.length > 1 ? 'Notes' : 'A note'} on the ${clef} clef staff`}
     >
       {/* Staff lines (positions 0, 2, 4, 6, 8) */}
       {[0, 2, 4, 6, 8].map((p) => (
@@ -160,16 +172,16 @@ export function Staff({ note, keySignature }: StaffProps) {
           or the middle-C line of the C clef (alto: line 3, tenor: line 4) */}
       <text
         ref={clefRef}
-        x={CLEF_GLYPHS[note.clef].x}
-        y={yFor(CLEF_GLYPHS[note.clef].position) + CLEF_GLYPHS[note.clef].baseline}
-        fontSize={CLEF_GLYPHS[note.clef].fontSize}
+        x={CLEF_GLYPHS[clef].x}
+        y={yFor(CLEF_GLYPHS[clef].position) + CLEF_GLYPHS[clef].baseline}
+        fontSize={CLEF_GLYPHS[clef].fontSize}
         fill="currentColor"
       >
-        {CLEF_GLYPHS[note.clef].glyph}
+        {CLEF_GLYPHS[clef].glyph}
       </text>
 
       {/* Key signature */}
-      {keySignature?.positions[note.clef].map((position, i) => (
+      {keySignature?.positions[clef].map((position, i) => (
         <AccidentalGlyph
           key={i}
           accidental={keySignature.accidental}
@@ -178,12 +190,12 @@ export function Staff({ note, keySignature }: StaffProps) {
         />
       ))}
 
-      {/* Ledger lines */}
-      {ledgerPositions(note.staffPosition).map((p) => (
+      {/* Ledger lines (widened when a stacked second shifts a note right) */}
+      {ledgers.map((p) => (
         <line
           key={p}
           x1={NOTE_X - 18}
-          x2={NOTE_X + 18}
+          x2={NOTE_X + 18 + (anyOffset ? 17 : 0)}
           y1={yFor(p)}
           y2={yFor(p)}
           stroke="currentColor"
@@ -191,20 +203,26 @@ export function Staff({ note, keySignature }: StaffProps) {
         />
       ))}
 
-      {/* Accidental in front of the note */}
-      {note.accidental && (
-        <AccidentalGlyph
-          accidental={note.accidental}
-          x={NOTE_X - 28}
-          position={note.staffPosition}
-        />
+      {/* Accidentals in front of their notes */}
+      {sorted.map(
+        (n, i) =>
+          n.accidental && (
+            <AccidentalGlyph
+              key={`acc-${i}`}
+              accidental={n.accidental}
+              x={NOTE_X - 28}
+              position={n.staffPosition}
+            />
+          ),
       )}
 
-      {/* Whole note */}
-      <g transform={`translate(${NOTE_X} ${noteY})`}>
-        <ellipse rx={9.5} ry={6.5} fill="currentColor" transform="rotate(-14)" />
-        <ellipse rx={5.2} ry={3.4} fill="var(--staff-bg, #fff)" transform="rotate(-32)" />
-      </g>
+      {/* Whole notes */}
+      {sorted.map((n, i) => (
+        <g key={i} transform={`translate(${xOf(i)} ${yFor(n.staffPosition)})`}>
+          <ellipse rx={9.5} ry={6.5} fill="currentColor" transform="rotate(-14)" />
+          <ellipse rx={5.2} ry={3.4} fill="var(--staff-bg, #fff)" transform="rotate(-32)" />
+        </g>
+      ))}
     </svg>
   )
 }
