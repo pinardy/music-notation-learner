@@ -1,0 +1,66 @@
+:root {
+  --fg: #3d3160;
+  --muted: #8a7fae;
+  --border: #e2d8f5;
+  --accent: #7c5cff;
+  --staff-bg: #fffdf5;
+  --card: #ffffff;
+
+  --candy-red: #ff6b81;
+  --candy-teal: #2ec4b6;
+  --candy-amber: #ffb347;
+  --candy-purple: #9d6bff;
+  --happy-green: #35c46f;
+
+  font-family: 'Fredoka', 'Comic Sans MS', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  color: var(--fg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #bfe6ff 0%, #e6f0ff 45%, #fff3d6 100%);
+  background-attachment: fixed;
+}
+
+button {
+  border-radius: 16px;
+  border: 3px solid var(--border);
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-family: inherit;
+  font-weight: 600;
+  background-color: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--border);
+  transition: transform 0.1s, box-shadow 0.1s, border-color 0.15s, background-color 0.15s;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--border);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--border);
+}
+
+button:focus-visible {
+  outline: 4px solid rgba(124, 92, 255, 0.4);
+  outline-offset: 2px;
+}
