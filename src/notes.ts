@@ -218,17 +218,44 @@ function noteDistractors(answer: string, letter: NoteLetter, level: Level): stri
   return chosen
 }
 
+export type PositionWeight = (clef: Clef, staffPosition: number) => number
+
 export interface QuestionOpts {
   mode: ClefMode
   level: Level
   gameType: GameType
   extended: boolean
   previous?: Question
+  /** Adaptive selection: relative weight per staff position (default uniform) */
+  weight?: PositionWeight
 }
 
-function makeNotesQuestion(clef: Clef, level: Level, extended: boolean): Question {
+function weightedIndex(clef: Clef, low: number, high: number, weight?: PositionWeight): number {
+  if (!weight) return randInt(low, high)
+  const weights: number[] = []
+  let total = 0
+  for (let idx = low; idx <= high; idx++) {
+    const w = Math.max(0, weight(clef, idx - BOTTOM_LINE[clef]))
+    weights.push(w)
+    total += w
+  }
+  if (total <= 0) return randInt(low, high)
+  let roll = Math.random() * total
+  for (let i = 0; i < weights.length; i++) {
+    roll -= weights[i]
+    if (roll <= 0) return low + i
+  }
+  return high
+}
+
+function makeNotesQuestion(
+  clef: Clef,
+  level: Level,
+  extended: boolean,
+  weight?: PositionWeight,
+): Question {
   const [low, high] = rangeOf(clef, extended)
-  const note = noteAt(clef, randInt(low, high))
+  const note = noteAt(clef, weightedIndex(clef, low, high, weight))
   let key: KeySignature | undefined
   if (level === 'medium') {
     note.accidental = pickAccidental(note.letter)
@@ -298,7 +325,7 @@ function makeChordQuestion(clef: Clef, extended: boolean): Question {
 }
 
 export function makeQuestion(opts: QuestionOpts): Question {
-  const { mode, level, gameType, extended, previous } = opts
+  const { mode, level, gameType, extended, previous, weight } = opts
   for (let attempt = 0; ; attempt++) {
     const clef: Clef = mode === 'both' ? pick(CLEFS) : mode
     const q =
@@ -306,7 +333,7 @@ export function makeQuestion(opts: QuestionOpts): Question {
         ? makeIntervalQuestion(clef, extended)
         : gameType === 'chords'
           ? makeChordQuestion(clef, extended)
-          : makeNotesQuestion(clef, level, extended)
+          : makeNotesQuestion(clef, level, extended, weight)
     // Avoid repeating the previous question exactly (give up after a few tries
     // in case the pool is somehow tiny)
     const samePlace =

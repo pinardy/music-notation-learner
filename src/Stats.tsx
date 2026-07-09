@@ -3,20 +3,12 @@ import { HeatStaff } from './Staff'
 import type { HeatCell } from './Staff'
 import { CLEFS, noteForPosition } from './notes'
 import type { Clef, GameType } from './notes'
-import { loadHistory } from './history'
+import { aggregatePositions, loadHistory } from './history'
 
 const GAME_LABELS: Record<GameType, string> = {
   notes: '🎼 Notes',
   intervals: '📏 Intervals',
   chords: '🎹 Chords',
-}
-
-interface PositionStats {
-  clef: Clef
-  position: number
-  attempts: number
-  correct: number
-  totalMs: number
 }
 
 function formatSeconds(ms: number): string {
@@ -38,7 +30,8 @@ export function Stats({ onBack }: { onBack: () => void }) {
     perPosition,
   } = useMemo(() => {
     const perGame = new Map<GameType, { attempts: number; correct: number; totalMs: number }>()
-    const perPosition = new Map<string, PositionStats>()
+    // Note-position heatmap only makes sense for the note-naming game
+    const perPosition = aggregatePositions(history)
     let totalAnswers = 0
     let totalCorrect = 0
     let totalMs = 0
@@ -54,20 +47,6 @@ export function Stats({ onBack }: { onBack: () => void }) {
         g.totalMs += a.timeMs
         if (a.correct) g.correct++
         perGame.set(round.gameType, g)
-
-        // Note-position heatmap only makes sense for the note-naming game
-        if (round.gameType === 'notes' && a.position !== undefined) {
-          const clef = a.clef as Clef
-          if (!CLEFS.includes(clef)) continue
-          const key = `${clef}:${a.position}`
-          const p =
-            perPosition.get(key) ??
-            ({ clef, position: a.position, attempts: 0, correct: 0, totalMs: 0 } as PositionStats)
-          p.attempts++
-          p.totalMs += a.timeMs
-          if (a.correct) p.correct++
-          perPosition.set(key, p)
-        }
       }
     }
     return { totalAnswers, totalCorrect, totalMs, perGame, perPosition }

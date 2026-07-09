@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Staff } from './Staff'
 import { makeQuestion } from './notes'
 import type { ClefMode, GameType, Level, Question } from './notes'
+import type { PositionWeight } from './notes'
 import { playNotes } from './audio'
-import { saveRound } from './history'
+import { buildAdaptiveWeights, saveRound } from './history'
 import { Stats } from './Stats'
 import './App.css'
 
@@ -100,6 +101,14 @@ export default function App() {
       return true
     }
   })
+  const [adaptive, setAdaptive] = useState(() => {
+    try {
+      return localStorage.getItem('note-game-adaptive') !== 'off'
+    } catch {
+      return true
+    }
+  })
+  const weightRef = useRef<PositionWeight | undefined>(undefined)
   const questionStartRef = useRef(0)
   const timeoutRef = useRef<number | undefined>(undefined)
 
@@ -135,9 +144,31 @@ export default function App() {
     setAnswers([])
     setSelected(null)
     setQuestionNumber(1)
-    setQuestion(makeQuestion({ mode: selectedMode, level, gameType, extended }))
+    // Weights are computed once per round from the play history
+    weightRef.current =
+      adaptive && gameType === 'notes' ? buildAdaptiveWeights() : undefined
+    setQuestion(
+      makeQuestion({
+        mode: selectedMode,
+        level,
+        gameType,
+        extended,
+        weight: weightRef.current,
+      }),
+    )
     setScreen('playing')
     questionStartRef.current = performance.now()
+  }
+
+  function toggleAdaptive() {
+    setAdaptive((on) => {
+      try {
+        localStorage.setItem('note-game-adaptive', on ? 'off' : 'on')
+      } catch {
+        // preference just won't persist
+      }
+      return !on
+    })
   }
 
   function finishRound(finalAnswers: AnswerRecord[]) {
@@ -205,7 +236,16 @@ export default function App() {
       } else {
         setSelected(null)
         setQuestionNumber((n) => n + 1)
-        setQuestion(makeQuestion({ mode, level, gameType, extended, previous: question }))
+        setQuestion(
+          makeQuestion({
+            mode,
+            level,
+            gameType,
+            extended,
+            previous: question,
+            weight: weightRef.current,
+          }),
+        )
         questionStartRef.current = performance.now()
       }
     }, FEEDBACK_MS)
@@ -259,17 +299,32 @@ export default function App() {
           </div>
         )}
 
-        <button
-          className={`toggle-button${extended ? ' active' : ''}`}
-          role="switch"
-          aria-checked={extended}
-          onClick={() => setExtended((e) => !e)}
-        >
-          🪜 Extended range {extended ? 'ON' : 'OFF'}
-          <span className="level-blurb">
-            {extended ? 'Up to 3 ledger lines' : '1 ledger line'}
-          </span>
-        </button>
+        <div className="toggle-row">
+          <button
+            className={`toggle-button${extended ? ' active' : ''}`}
+            role="switch"
+            aria-checked={extended}
+            onClick={() => setExtended((e) => !e)}
+          >
+            🪜 Extended range {extended ? 'ON' : 'OFF'}
+            <span className="level-blurb">
+              {extended ? 'Up to 3 ledger lines' : '1 ledger line'}
+            </span>
+          </button>
+          {gameType === 'notes' && (
+            <button
+              className={`toggle-button${adaptive ? ' active' : ''}`}
+              role="switch"
+              aria-checked={adaptive}
+              onClick={toggleAdaptive}
+            >
+              🧠 Smart practice {adaptive ? 'ON' : 'OFF'}
+              <span className="level-blurb">
+                {adaptive ? 'Drills your trickiest notes' : 'All notes equally'}
+              </span>
+            </button>
+          )}
+        </div>
         </div>
 
         <div className="mode-buttons">

@@ -24,6 +24,10 @@ A **stats screen** (📊 My Stats) aggregates your play history (stored locally,
 last 300 rounds): accuracy per game type, every practiced note drawn on a
 staff colored by accuracy, and a "practice these" list of your weakest notes.
 
+**Smart practice** (🧠, on by default for the Notes game) adaptively weights
+question selection using that history: notes you miss often or answer slowly
+come up more, unseen notes get a small boost, and mastered notes appear less.
+
 ## Modes
 
 - **Treble clef** — C4 to A5 (one ledger line above/below the staff)
