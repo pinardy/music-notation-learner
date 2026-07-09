@@ -28,6 +28,7 @@ const EAR_LEVELS: { id: Level; label: string; blurb: string }[] = [
   { id: 'easy', label: '🐤 Higher or Lower', blurb: 'Which way did it go?' },
   { id: 'medium', label: '👂 Intervals', blurb: 'How far apart?' },
   { id: 'hard', label: '🎵 Chords', blurb: 'Major, minor…?' },
+  { id: 'expert', label: '🦉 Name the Note', blurb: 'What note did you hear?' },
 ]
 
 const PROMPTS: Record<GameType, string> = {
@@ -41,6 +42,7 @@ const EAR_PROMPTS: Record<Level, string> = {
   easy: 'Was the second note higher or lower?',
   medium: 'How far apart were the two notes?',
   hard: 'What kind of chord was that?',
+  expert: 'What note was that?',
 }
 
 const PRAISE = ['Great job! 🎉', 'Awesome! ⭐', 'You rock! 🎸', 'Super! ✨', 'Wow! 🌈']
@@ -295,7 +297,11 @@ export default function App() {
               role="radio"
               aria-checked={gameType === g.id}
               className={`level-button${gameType === g.id ? ' active' : ''}`}
-              onClick={() => setGameType(g.id)}
+              onClick={() => {
+                setGameType(g.id)
+                // 'expert' only exists in ear training
+                if (g.id !== 'ear' && level === 'expert') setLevel('easy')
+              }}
             >
               <span className="level-label">{g.label}</span>
               <span className="level-blurb">{g.blurb}</span>
@@ -304,7 +310,11 @@ export default function App() {
         </div>
 
         {(gameType === 'notes' || gameType === 'ear') && (
-          <div className="level-picker" role="radiogroup" aria-label="Difficulty">
+          <div
+            className={`level-picker${gameType === 'ear' ? ' game-picker' : ''}`}
+            role="radiogroup"
+            aria-label="Difficulty"
+          >
             {(gameType === 'ear' ? EAR_LEVELS : LEVELS).map((l) => (
               <button
                 key={l.id}

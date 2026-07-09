@@ -18,7 +18,8 @@ Correct answers play the pitch(es), synthesized with the Web Audio API
 - **Chords** — a root-position triad; name the root note
 - **Ear Training** — the app plays, you identify by ear, and the staff is
   revealed after answering: higher-or-lower (easy), interval distance
-  (medium), or chord quality — major/minor/diminished natural triads (hard)
+  (medium), chord quality — major/minor/diminished natural triads (hard),
+  or name a single heard note from four choices, within C4–B4 (expert)
 
 An **extended range** toggle widens every game from one ledger line to three
 ledger lines above and below the staff.

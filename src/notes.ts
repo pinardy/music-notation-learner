@@ -2,7 +2,7 @@ export type Clef = 'treble' | 'bass' | 'alto' | 'tenor'
 export const CLEFS: Clef[] = ['treble', 'bass', 'alto', 'tenor']
 /** 'both' is the historical id for "random clef" (kept for stored best scores) */
 export type ClefMode = Clef | 'both'
-export type Level = 'easy' | 'medium' | 'hard'
+export type Level = 'easy' | 'medium' | 'hard' | 'expert'
 export type GameType = 'notes' | 'intervals' | 'chords' | 'ear'
 export type Accidental = 'sharp' | 'flat'
 
@@ -339,6 +339,24 @@ function noteName(n: Note): string {
 
 function makeEarQuestion(clef: Clef, level: Level): Question {
   const [low, high] = rangeOf(clef, false)
+
+  if (level === 'expert') {
+    // Name a single heard note. Kept within one fixed octave (C4-B4) so pitch
+    // memory can form; revealed on the treble staff.
+    const idx = diatonicIndex(pick(LETTERS), 4)
+    const note = noteAt('treble', idx)
+    return {
+      clef: 'treble',
+      notes: [note],
+      answer: note.letter,
+      display: noteName(note),
+      options: shuffle([
+        note.letter,
+        ...shuffle(LETTERS.filter((l) => l !== note.letter)).slice(0, 3),
+      ]),
+      midis: [midiOf(note.letter, note.octave)],
+    }
+  }
 
   if (level === 'easy') {
     // Two notes at least a third apart — which way did the second one go?
