@@ -168,7 +168,7 @@ export interface Question {
 
 const SEMITONES: Record<NoteLetter, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
 
-function midiOf(letter: NoteLetter, octave: number, accidental?: Accidental): number {
+export function midiOf(letter: NoteLetter, octave: number, accidental?: Accidental): number {
   const shift = accidental === 'sharp' ? 1 : accidental === 'flat' ? -1 : 0
   return (octave + 1) * 12 + SEMITONES[letter] + shift
 }
@@ -328,7 +328,7 @@ function makeChordQuestion(clef: Clef, extended: boolean): Question {
 
 // Natural (no-accidental) triad qualities are fixed by the root letter, so the
 // ear-training chord level can play real qualities AND reveal a clean staff
-const TRIAD_ROOTS: Record<string, NoteLetter[]> = {
+export const TRIAD_ROOTS: Record<string, NoteLetter[]> = {
   Major: ['C', 'F', 'G'],
   Minor: ['D', 'E', 'A'],
   Diminished: ['B'],

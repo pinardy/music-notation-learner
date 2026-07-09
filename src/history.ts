@@ -74,8 +74,10 @@ export function aggregatePositions(history: RoundRecord[]): Map<string, Position
  * misses often or answers slowly come up more; unseen positions get a small
  * boost so coverage broadens over time.
  */
-export function buildAdaptiveWeights(): (clef: Clef, position: number) => number {
-  const agg = aggregatePositions(loadHistory())
+export function buildAdaptiveWeights(
+  history: RoundRecord[] = loadHistory(),
+): (clef: Clef, position: number) => number {
+  const agg = aggregatePositions(history)
   if (agg.size === 0) return () => 1
 
   let attempts = 0

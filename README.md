@@ -63,11 +63,21 @@ rounds feed the stats/adaptive history but don't compete for best scores.
 ```sh
 npm install
 npm run dev      # start dev server at http://localhost:5173
+npm test         # run the Vitest theory-engine suite
 npm run build    # type-check and build for production
 ```
 
+Tests also run in CI on every push (before the GitHub Pages deploy).
+
 ## Code layout
 
-- `src/notes.ts` — note model, staff-position math, question generation
-- `src/Staff.tsx` — SVG rendering of the staff, clef, ledger lines, and note
-- `src/App.tsx` — game screens (start / playing / summary), scoring, timing
+- `src/notes.ts` — note model, staff-position math, question generation (the
+  music-theory engine; covered by `src/notes.test.ts`)
+- `src/history.ts` — play-history persistence, stats aggregation, and adaptive
+  question weighting (covered by `src/history.test.ts`)
+- `src/Staff.tsx` — SVG rendering of the staff, clef, ledger lines, and notes
+- `src/useGame.ts` — game state and round logic (the `useGame` hook)
+- `src/StartScreen.tsx` / `src/PlayScreen.tsx` / `src/SummaryScreen.tsx` — the
+  three screen components; `src/Stats.tsx` is the stats screen
+- `src/gameConfig.ts` — shared constants, types, and pure helpers
+- `src/App.tsx` — thin router that renders the current screen
