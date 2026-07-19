@@ -61,8 +61,8 @@ export function useGame() {
 
   function chooseGame(id: GameType) {
     setGameType(id)
-    // 'expert' only exists in ear training
-    if (id !== 'ear' && level === 'expert') setLevel('easy')
+    // 'expert' only exists in ear training and sight reading
+    if (id !== 'ear' && id !== 'sight' && level === 'expert') setLevel('easy')
   }
 
   // Chord-ish sounds get a light roll; melodic ear questions a real gap.
@@ -79,6 +79,11 @@ export function useGame() {
 
   function startRound(selectedMode: ClefMode) {
     setMode(selectedMode)
+    // Sight reading runs its own screen (mic-driven, no Q/A loop)
+    if (gameType === 'sight') {
+      setScreen('sight')
+      return
+    }
     setReviewQueue(null)
     setAnswers([])
     setSelected(null)

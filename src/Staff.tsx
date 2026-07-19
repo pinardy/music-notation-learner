@@ -369,3 +369,116 @@ export function HeatStaff({ clef, cells }: { clef: Clef; cells: HeatCell[] }) {
     </svg>
   )
 }
+
+// --- Sight reading sequence staff ---
+
+interface SequenceStaffProps {
+  clef: Clef
+  keySignature?: KeySignature
+  notes: Note[]
+  /** Index of the note to play next; earlier notes render as done */
+  cursor: number
+  /** Flash the cursor note red after a wrong attempt */
+  wrong?: boolean
+}
+
+/**
+ * A left-to-right line of notes with a play cursor: done notes green, the
+ * current target purple (red while a wrong attempt flashes), upcoming ink.
+ */
+export function SequenceStaff({ clef, keySignature, notes, cursor, wrong }: SequenceStaffProps) {
+  const clefRef = useRef<SVGTextElement>(null)
+  const cClefFit = useCClefFit(clef, clefRef)
+  const [keySigX, setKeySigX] = useState(KEY_SIG_X_FALLBACK)
+
+  useLayoutEffect(() => {
+    const bbox = clefRef.current?.getBBox()
+    if (bbox && bbox.width > 0) setKeySigX(bbox.x + bbox.width + KEY_SIG_GAP)
+  }, [clef, cClefFit])
+
+  const sigCount = keySignature?.letters.length ?? 0
+  const startX = keySigX + sigCount * KEY_SIG_STEP + 14
+  const stepX = 42 // room for an accidental in front of each note
+  const width = startX + notes.length * stepX + 16
+
+  const colorFor = (i: number) =>
+    i < cursor
+      ? 'var(--happy-green)'
+      : i === cursor
+        ? wrong
+          ? 'var(--candy-red)'
+          : 'var(--accent)'
+        : 'currentColor'
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${HEIGHT}`}
+      className="staff"
+      role="img"
+      aria-label={`A line of ${notes.length} notes on the ${clef} clef staff`}
+    >
+      {[0, 2, 4, 6, 8].map((p) => (
+        <line
+          key={p}
+          x1={20}
+          x2={width - 10}
+          y1={yFor(p)}
+          y2={yFor(p)}
+          stroke="currentColor"
+          strokeWidth={1.5}
+        />
+      ))}
+
+      <text
+        ref={clefRef}
+        x={CLEF_GLYPHS[clef].x}
+        y={cClefFit?.y ?? yFor(CLEF_GLYPHS[clef].position) + CLEF_GLYPHS[clef].baseline}
+        fontSize={cClefFit?.fontSize ?? CLEF_GLYPHS[clef].fontSize}
+        fill="currentColor"
+      >
+        {CLEF_GLYPHS[clef].glyph}
+      </text>
+
+      {keySignature?.positions[clef].map((position, i) => (
+        <AccidentalGlyph
+          key={i}
+          accidental={keySignature.accidental}
+          x={keySigX + i * KEY_SIG_STEP}
+          position={position}
+        />
+      ))}
+
+      {notes.map((n, i) => {
+        const x = startX + i * stepX + stepX / 2
+        return (
+          <g key={i} style={{ color: colorFor(i) }}>
+            {ledgerPositions(n.staffPosition).map((p) => (
+              <line
+                key={p}
+                x1={x - 15}
+                x2={x + 15}
+                y1={yFor(p)}
+                y2={yFor(p)}
+                stroke="currentColor"
+                strokeWidth={1.5}
+              />
+            ))}
+            {n.accidental && (
+              <AccidentalGlyph accidental={n.accidental} x={x - 17} position={n.staffPosition} />
+            )}
+            <g transform={`translate(${x} ${yFor(n.staffPosition)})`}>
+              <ellipse rx={9.5} ry={6.5} fill="currentColor" transform="rotate(-14)" />
+              <ellipse rx={5.2} ry={3.4} fill="var(--staff-bg, #fff)" transform="rotate(-32)" />
+            </g>
+            {i === cursor && (
+              <path
+                d={`M ${x - 6} ${HEIGHT - 12} L ${x + 6} ${HEIGHT - 12} L ${x} ${HEIGHT - 22} Z`}
+                fill="currentColor"
+              />
+            )}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}

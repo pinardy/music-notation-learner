@@ -5,11 +5,13 @@ import {
   GAMES,
   LEVELS,
   EAR_LEVELS,
+  SIGHT_LEVELS,
   EAR_POOL_CHOICES,
   ROUND_LENGTH,
   loadBest,
   formatSeconds,
 } from './gameConfig'
+import { SIGHT_LINE_LENGTH } from './notes'
 
 const CLEF_BUTTONS: [ClefMode, string][] = [
   ['treble', '🐦 Treble Clef 𝄞'],
@@ -19,9 +21,9 @@ const CLEF_BUTTONS: [ClefMode, string][] = [
   ['both', '🎲 All Clefs'],
 ]
 
-function bestLabel(b: ReturnType<typeof loadBest>) {
+function bestLabel(b: ReturnType<typeof loadBest>, total = ROUND_LENGTH) {
   return b
-    ? `Best: ${b.score}/${ROUND_LENGTH} · avg ${formatSeconds(b.avgTimeMs)}`
+    ? `Best: ${b.score}/${total} · avg ${formatSeconds(b.avgTimeMs)}`
     : 'No games yet'
 }
 
@@ -65,15 +67,20 @@ export function StartScreen({ game }: { game: GameState }) {
             </div>
           </div>
 
-          {(gameType === 'notes' || gameType === 'ear') && (
+          {(gameType === 'notes' || gameType === 'ear' || gameType === 'sight') && (
             <div className="picker-group">
               <span className="picker-label">⭐ Difficulty</span>
               <div
-                className={`chip-picker${gameType === 'ear' ? ' cols-2' : ''}`}
+                className={`chip-picker${gameType !== 'notes' ? ' cols-2' : ''}`}
                 role="radiogroup"
                 aria-label="Difficulty"
               >
-                {(gameType === 'ear' ? EAR_LEVELS : LEVELS).map((l) => (
+                {(gameType === 'ear'
+                  ? EAR_LEVELS
+                  : gameType === 'sight'
+                    ? SIGHT_LEVELS
+                    : LEVELS
+                ).map((l) => (
                   <button
                     key={l.id}
                     role="radio"
@@ -125,7 +132,7 @@ export function StartScreen({ game }: { game: GameState }) {
             </div>
           )}
 
-          {gameType !== 'ear' && (
+          {gameType !== 'ear' && gameType !== 'sight' && (
             <div className="toggle-row">
               <button
                 className={`toggle-button${extended ? ' active' : ''}`}
@@ -168,7 +175,10 @@ export function StartScreen({ game }: { game: GameState }) {
               <button key={m} className="mode-button" onClick={() => game.startRound(m)}>
                 <span className="mode-label">{label}</span>
                 <span className="mode-best">
-                  {bestLabel(loadBest(m, levelKey, gameType, extended))}
+                  {bestLabel(
+                    loadBest(m, levelKey, gameType, gameType === 'sight' ? false : extended),
+                    gameType === 'sight' ? SIGHT_LINE_LENGTH : ROUND_LENGTH,
+                  )}
                 </span>
               </button>
             ))

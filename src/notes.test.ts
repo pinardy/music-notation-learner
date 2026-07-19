@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   makeQuestion,
+  makeSightSequence,
   noteForPosition,
   noteLabel,
   midiOf,
@@ -9,6 +10,7 @@ import {
   INTERVAL_NAMES,
   TRIAD_QUALITIES,
   TRIAD_ROOTS,
+  SIGHT_MAX_LEAP,
   type Clef,
   type Question,
 } from './notes'
@@ -225,6 +227,62 @@ describe('ear training', () => {
         // the played pitch class must equal the answer label's pitch class
         expect(q.midis[0] % 12).toBe(PITCH_CLASS[q.answer])
       }
+    }
+  })
+})
+
+describe('sight reading sequences', () => {
+  const LEVELS = ['easy', 'medium', 'hard', 'expert'] as const
+
+  it('walks melodically within the standard range, no immediate repeats', () => {
+    for (const level of LEVELS) {
+      for (const seq of times(50, () => makeSightSequence('treble', level))) {
+        expect(seq.notes).toHaveLength(8)
+        for (const n of seq.notes) {
+          // treble standard range: C4 (pos -2) to A5 (pos 10)
+          expect(n.staffPosition).toBeGreaterThanOrEqual(-2)
+          expect(n.staffPosition).toBeLessThanOrEqual(10)
+        }
+        for (let i = 1; i < seq.notes.length; i++) {
+          const leap = Math.abs(seq.notes[i].staffPosition - seq.notes[i - 1].staffPosition)
+          expect(leap).toBeGreaterThanOrEqual(1)
+          expect(leap).toBeLessThanOrEqual(SIGHT_MAX_LEAP)
+        }
+      }
+    }
+  })
+
+  it('caps key-signature difficulty per level', () => {
+    const maxAcc = { easy: 0, medium: 2, hard: 4, expert: 7 }
+    for (const level of LEVELS) {
+      for (const seq of times(60, () => makeSightSequence('bass', level))) {
+        if (level === 'easy') expect(seq.key).toBeUndefined()
+        else expect(seq.key!.letters.length).toBeLessThanOrEqual(maxAcc[level])
+      }
+    }
+  })
+
+  it('only hard/expert put accidentals on notes; expert reaches big keys', () => {
+    const seqs = (level: (typeof LEVELS)[number]) =>
+      times(80, () => makeSightSequence('treble', level))
+    const hasAccidental = (s: ReturnType<typeof makeSightSequence>) =>
+      s.notes.some((n) => n.accidental)
+    expect(seqs('easy').some(hasAccidental)).toBe(false)
+    expect(seqs('medium').some(hasAccidental)).toBe(false)
+    expect(seqs('hard').some(hasAccidental)).toBe(true)
+    expect(seqs('expert').some(hasAccidental)).toBe(true)
+    // expert draws keys beyond hard's 4-accidental cap at least sometimes
+    expect(seqs('expert').some((s) => s.key!.letters.length > 4)).toBe(true)
+  })
+
+  it('computes effective MIDI: note accidental overrides the key signature', () => {
+    for (const seq of times(150, () => makeSightSequence('treble', 'expert'))) {
+      seq.notes.forEach((n, i) => {
+        const effective =
+          n.accidental ??
+          (seq.key && seq.key.letters.includes(n.letter) ? seq.key.accidental : undefined)
+        expect(seq.midis[i]).toBe(midiOf(n.letter, n.octave, effective))
+      })
     }
   })
 })

@@ -24,6 +24,13 @@ cream "paper" look in the dark so notation stays high-contrast.
   revealed after answering: higher-or-lower (easy), interval distance
   (medium), chord quality — major/minor/diminished natural triads (hard),
   or name a single heard note from four choices, within C4–B4 (expert).
+- **Sight Reading** — uses the microphone: a line of 8 notes appears on the
+  staff and you play each one on your instrument; the cursor advances when
+  the pitch-detector hears the right note (octave-strict). Difficulty ramps
+  through key signatures: C major only → up to 2♯/♭ → up to 4♯/♭ with
+  accidentals on notes → all keys with more accidentals. Pitch detection
+  (autocorrelation) and the note matcher are ported from
+  [purrfect-pitch](https://github.com/pinardy/purrfect-pitch).
   Name-the-note has its own difficulty pools: naturals only, naturals plus
   F♯/B♭, or all 12 chromatic notes (enharmonic answers shown as e.g. F♯/G♭).
   A **reference note** toggle plays a "C" first, turning the harder pools from

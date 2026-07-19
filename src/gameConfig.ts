@@ -8,6 +8,7 @@ export const GAMES: { id: GameType; label: string; blurb: string }[] = [
   { id: 'intervals', label: '📏 Intervals', blurb: 'How far apart?' },
   { id: 'chords', label: '🎹 Chords', blurb: 'Name the root' },
   { id: 'ear', label: '🎧 Ear Training', blurb: 'Listen & guess' },
+  { id: 'sight', label: '🎤 Sight Reading', blurb: 'Play what you see' },
 ]
 
 export const LEVELS: { id: Level; label: string; blurb: string }[] = [
@@ -28,12 +29,20 @@ export const PROMPTS: Record<GameType, string> = {
   intervals: 'How far apart are the notes?',
   chords: 'Name the root (bottom) note!',
   ear: 'Listen carefully…',
+  sight: 'Play each note on your instrument!',
 }
 
 export const EAR_POOL_CHOICES: { id: EarPool; label: string; blurb: string }[] = [
   { id: 'natural', label: '🌱 Naturals', blurb: '7 white keys' },
   { id: 'some', label: '🌟 + F♯ & B♭', blurb: 'First accidentals' },
   { id: 'all', label: '🚀 All 12 notes', blurb: 'Sharps & flats' },
+]
+
+export const SIGHT_LEVELS: { id: Level; label: string; blurb: string }[] = [
+  { id: 'easy', label: '🌱 C major', blurb: 'No sharps or flats' },
+  { id: 'medium', label: '🌿 Easy keys', blurb: 'Up to 2♯/2♭' },
+  { id: 'hard', label: '🌶️ Tricky keys', blurb: 'Up to 4♯/4♭ + accidentals' },
+  { id: 'expert', label: '🔥 All keys', blurb: 'Up to 7♯/7♭ + accidentals' },
 ]
 
 export const EAR_PROMPTS: Record<Level, string> = {
@@ -61,7 +70,7 @@ export interface BestResult {
   avgTimeMs: number
 }
 
-export type Screen = 'start' | 'playing' | 'summary' | 'stats'
+export type Screen = 'start' | 'playing' | 'summary' | 'stats' | 'sight'
 
 export function starsFor(score: number, total: number): { stars: string; message: string } {
   const ratio = total > 0 ? score / total : 0

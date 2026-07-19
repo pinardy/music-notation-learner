@@ -3,7 +3,7 @@ export const CLEFS: Clef[] = ['treble', 'bass', 'alto', 'tenor']
 /** 'both' is the historical id for "random clef" (kept for stored best scores) */
 export type ClefMode = Clef | 'both'
 export type Level = 'easy' | 'medium' | 'hard' | 'expert'
-export type GameType = 'notes' | 'intervals' | 'chords' | 'ear'
+export type GameType = 'notes' | 'intervals' | 'chords' | 'ear' | 'sight'
 export type Accidental = 'sharp' | 'flat'
 
 export type NoteLetter = 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B'
@@ -444,6 +444,73 @@ function makeEarQuestion(clef: Clef, level: Level, pool: EarPool): Question {
     options: [...TRIAD_QUALITIES],
     midis: notes.map((n) => midiOf(n.letter, n.octave)),
   }
+}
+
+// --- Sight reading ---
+
+export interface SightSequence {
+  clef: Clef
+  key?: KeySignature
+  notes: Note[]
+  /** Effective pitch per note: an accidental on the note overrides the key */
+  midis: number[]
+}
+
+// Difficulty ladder: harder key signatures, then accidentals on the notes
+const SIGHT_MAX_KEY_ACCIDENTALS: Record<Level, number> = {
+  easy: 0, // C major only
+  medium: 2, // G/D/F/B♭ major
+  hard: 4,
+  expert: 7,
+}
+const SIGHT_ACCIDENTAL_PROB: Record<Level, number> = {
+  easy: 0,
+  medium: 0,
+  hard: 0.15,
+  expert: 0.3,
+}
+export const SIGHT_MAX_LEAP = 4 // melodic: at most a fifth between notes
+export const SIGHT_LINE_LENGTH = 8
+
+export function makeSightSequence(
+  mode: ClefMode,
+  level: Level,
+  count = SIGHT_LINE_LENGTH,
+): SightSequence {
+  const clef: Clef = mode === 'both' ? pick(CLEFS) : mode
+  const [low, high] = rangeOf(clef, false)
+  const maxKeyAcc = SIGHT_MAX_KEY_ACCIDENTALS[level]
+  const key =
+    maxKeyAcc === 0 ? undefined : pick(KEYS.filter((k) => k.letters.length <= maxKeyAcc))
+  const accidentalProb = SIGHT_ACCIDENTAL_PROB[level]
+
+  const notes: Note[] = []
+  const midis: number[] = []
+  let idx = randInt(low + 1, high - 1)
+  for (let i = 0; i < count; i++) {
+    const note = noteAt(clef, idx)
+    if (Math.random() < accidentalProb) {
+      const allowed = (['sharp', 'flat'] as Accidental[]).filter((acc) =>
+        ALLOWED[acc].includes(note.letter),
+      )
+      if (allowed.length) note.accidental = pick(allowed)
+    }
+    const effective =
+      note.accidental ?? (key?.letters.includes(note.letter) ? key.accidental : undefined)
+    notes.push(note)
+    midis.push(midiOf(note.letter, note.octave, effective))
+
+    // Melodic walk: bounded leap, never the same position twice in a row
+    let next = idx
+    while (next === idx) {
+      next = Math.max(
+        low,
+        Math.min(high, idx + randInt(-SIGHT_MAX_LEAP, SIGHT_MAX_LEAP)),
+      )
+    }
+    idx = next
+  }
+  return { clef, key, notes, midis }
 }
 
 export function makeQuestion(opts: QuestionOpts): Question {
