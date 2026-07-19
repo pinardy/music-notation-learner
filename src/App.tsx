@@ -3,13 +3,27 @@ import { StartScreen } from './StartScreen'
 import { PlayScreen } from './PlayScreen'
 import { SummaryScreen } from './SummaryScreen'
 import { Stats } from './Stats'
+import { ThemeToggle } from './ThemeToggle'
 import './App.css'
 
 export default function App() {
   const game = useGame()
 
-  if (game.screen === 'stats') return <Stats onBack={() => game.setScreen('start')} />
-  if (game.screen === 'start') return <StartScreen game={game} />
-  if (game.screen === 'summary') return <SummaryScreen game={game} />
-  return <PlayScreen game={game} />
+  const screen =
+    game.screen === 'stats' ? (
+      <Stats onBack={() => game.setScreen('start')} />
+    ) : game.screen === 'start' ? (
+      <StartScreen game={game} />
+    ) : game.screen === 'summary' ? (
+      <SummaryScreen game={game} />
+    ) : (
+      <PlayScreen game={game} />
+    )
+
+  return (
+    <>
+      <ThemeToggle />
+      {screen}
+    </>
+  )
 }

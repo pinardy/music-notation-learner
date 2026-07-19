@@ -12,6 +12,21 @@
   --candy-purple: #9d6bff;
   --happy-green: #35c46f;
 
+  /* Themeable surfaces (overridden by [data-theme='dark'] below) */
+  --bg: linear-gradient(180deg, #bfe6ff 0%, #e6f0ff 45%, #fff3d6 100%);
+  --h1: #4b3a8f;
+  --h1-glow: #fff;
+  --active-bg: #efe9ff;
+  --active-edge: #c9b8ff;
+  --chip-bg: #fbf7ff;
+  --amber-bg: #fff4e0;
+  --amber-edge: #f3cd8b;
+  --table-head: #f7f4fe;
+  --row-line: #f1ecfb;
+  --staff-edge: #ffd6e7;
+  --staff-shadow: #f3c2d8;
+  --staff-drop: rgba(80, 60, 140, 0.12);
+
   font-family: 'Fredoka', 'Comic Sans MS', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -24,6 +39,31 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Night-sky theme. The staff card keeps its cream "paper" look so notation
+   stays high-contrast — like sheet music under a reading lamp. */
+:root[data-theme='dark'] {
+  --fg: #e8e3f8;
+  --muted: #a49ac8;
+  --border: #453e63;
+  --card: #322b4d;
+
+  --bg: linear-gradient(180deg, #1a1f3d 0%, #232a4d 45%, #2d2440 100%);
+  --h1: #cfc4ff;
+  --h1-glow: rgba(0, 0, 0, 0.4);
+  --active-bg: #3d3560;
+  --active-edge: #241f3a;
+  --chip-bg: #2c2647;
+  --amber-bg: #4a3a22;
+  --amber-edge: #2e2415;
+  --table-head: #3a3358;
+  --row-line: #453e63;
+  --staff-edge: #7d5a72;
+  --staff-shadow: #4f3a49;
+  --staff-drop: rgba(0, 0, 0, 0.45);
+
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -31,7 +71,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #bfe6ff 0%, #e6f0ff 45%, #fff3d6 100%);
+  background: var(--bg);
   background-attachment: fixed;
 }
 

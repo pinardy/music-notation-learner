@@ -11,6 +11,10 @@ your best result per mode is saved in the browser (localStorage).
 Correct answers play the pitch(es), synthesized with the Web Audio API
 (toggle with the 🔊 button).
 
+**Dark mode** — the ☀️/🌙 button swaps between the daytime and night-sky
+themes. Defaults to your system preference and persists; the staff keeps its
+cream "paper" look in the dark so notation stays high-contrast.
+
 ## Games
 
 - **Notes** — name the note on the staff (difficulty levels below)
