@@ -101,6 +101,19 @@ export function useGame() {
     questionStartRef.current = performance.now()
   }
 
+  // Abandon the current round and return to the menu. Cancels the pending
+  // next-question timer so it can't fire (and e.g. jump to the summary) after
+  // leaving; the partial round is discarded, not recorded.
+  function exitToMenu() {
+    window.clearTimeout(timeoutRef.current)
+    setReviewQueue(null)
+    setQuestion(null)
+    setSelected(null)
+    setAnswers([])
+    askedRef.current = []
+    setScreen('start')
+  }
+
   // Replay exactly the questions missed this round, in order
   function startReviewRound() {
     const missed = askedRef.current.filter((_, i) => !answers[i]?.correct)
@@ -247,5 +260,6 @@ export function useGame() {
     startRound,
     startReviewRound,
     handleAnswer,
+    exitToMenu,
   }
 }

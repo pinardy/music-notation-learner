@@ -21,6 +21,14 @@ export function PlayScreen({ game }: { game: GameState }) {
   return (
     <main className="app playing">
       <SoundToggle soundOn={game.soundOn} onToggle={game.toggleSound} />
+      <button
+        className="exit-button"
+        onClick={game.exitToMenu}
+        aria-label="Exit to menu"
+        title="Exit to menu"
+      >
+        🏠
+      </button>
       <header className="hud">
         <span>
           {reviewQueue ? '💪' : '🎵'} {questionNumber}/{roundLength}
